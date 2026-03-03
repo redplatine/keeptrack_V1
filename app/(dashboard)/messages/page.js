@@ -13,8 +13,9 @@ function Avatar({ prenom, nom }) {
   return (
     <div style={{
       width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-      background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '12px', fontWeight: 700, color: '#4F46E5'
+      // Bordeaux clair au lieu de violet
+      background: '#F2E6E9', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: '12px', fontWeight: 700, color: '#6B2F42'
     }}>
       {initiales || '?'}
     </div>
@@ -101,7 +102,8 @@ export default function MessagesPage() {
 
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+          {/* Spinner bordeaux */}
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
         </div>
       ) : messagesFiltres.length === 0 ? (
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', padding: '60px', textAlign: 'center' }}>
@@ -112,7 +114,7 @@ export default function MessagesPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {messagesFiltres.map(msg => {
             const sc = STATUS_CONFIG[msg.statut] || STATUS_CONFIG['Ouvert']
-            const isExpanded = expanded[msg.id] !== false // ouvert par défaut
+            const isExpanded = expanded[msg.id] !== false
             const isOpen = msg.statut === 'Ouvert'
 
             return (
@@ -180,7 +182,6 @@ export default function MessagesPage() {
                       Supprimer
                     </button>
 
-                    {/* Chevron */}
                     <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A8A29E' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                         style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
@@ -204,13 +205,16 @@ export default function MessagesPage() {
                       </div>
                     </div>
 
-                    {/* Réponse admin existante */}
+                    {/* Réponse admin — bordeaux au lieu d'indigo */}
                     {msg.reponse_admin && (
                       <div style={{ marginBottom: '16px' }}>
                         <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
                           Votre réponse
                         </p>
-                        <div style={{ background: '#EEF2FF', borderRadius: '12px', padding: '14px 16px', border: '1px solid #C7D2FE', borderLeft: '3px solid #4F46E5' }}>
+                        <div style={{
+                          background: '#F9EEF1', borderRadius: '12px', padding: '14px 16px',
+                          border: '1px solid #DDB8C2', borderLeft: '3px solid #8B4A5A'
+                        }}>
                           <p style={{ fontSize: '14px', color: '#44403C', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.reponse_admin}</p>
                           {msg.repondu_at && (
                             <p style={{ fontSize: '11px', color: '#A8A29E', margin: '8px 0 0' }}>{formatDate(msg.repondu_at)}</p>
@@ -236,7 +240,8 @@ export default function MessagesPage() {
                             outline: 'none', color: '#1C1917', fontFamily: 'inherit',
                             resize: 'vertical', marginBottom: '10px', boxSizing: 'border-box', lineHeight: 1.6,
                           }}
-                          onFocus={e => e.target.style.borderColor = '#4F7EF7'}
+                          // Focus bordeaux au lieu du bleu
+                          onFocus={e => e.target.style.borderColor = '#8B4A5A'}
                           onBlur={e => e.target.style.borderColor = '#E8E4E0'}
                         />
                         <button
