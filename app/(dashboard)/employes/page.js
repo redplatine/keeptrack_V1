@@ -16,7 +16,8 @@ function Avatar({ id, prenom, nom, size = 36 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '10px', flexShrink: 0,
-      background: '#EDE9FE', overflow: 'hidden',
+      // Bordeaux clair au lieu de violet
+      background: '#F2E6E9', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       {!error ? (
@@ -24,14 +25,14 @@ function Avatar({ id, prenom, nom, size = 36 }) {
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={() => setError(true)} />
       ) : (
-        <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#4F46E5' }}>{initiales}</span>
+        <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
       )}
     </div>
   )
 }
 
 const CONTRAT_CONFIG = {
-  'CDI':        { bg: '#EEF2FF', color: '#4F46E5' },
+  'CDI':        { bg: '#F9EEF1', color: '#6B2F42' }, // bordeaux — remplace indigo
   'CDD':        { bg: '#FFFBEB', color: '#B45309' },
   'Alternance': { bg: '#F0FDF4', color: '#16A34A' },
   'Stage':      { bg: '#F0EDE9', color: '#78716C' },
@@ -211,7 +212,6 @@ export default function EmployesPage() {
           background: 'white', borderRadius: '16px', padding: '28px 32px',
           border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '24px'
         }}>
-          {/* Form header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {employeSelectionne && <Avatar id={employeSelectionne.id} prenom={employeSelectionne.prenom} nom={employeSelectionne.nom} size={40} />}
@@ -240,65 +240,26 @@ export default function EmployesPage() {
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
-              {/* SECTION — Informations personnelles */}
               <div style={S.sectionTitle}>Informations personnelles</div>
 
-              <div>
-                <label style={S.label}>Matricule</label>
-                <input {...F('matricule')} placeholder="Ex: MAT001" />
-              </div>
-              <div>
-                <label style={S.label}>Nom *</label>
-                <input required {...F('nom')} />
-              </div>
-              <div>
-                <label style={S.label}>Prénom *</label>
-                <input required {...F('prenom')} />
-              </div>
-              <div>
-                <label style={S.label}>Email *</label>
-                <input required type="email" {...F('email')} />
-              </div>
-              <div>
-                <label style={S.label}>Date de naissance</label>
-                <input type="date" {...F('date_naissance')} />
-              </div>
+              <div><label style={S.label}>Matricule</label><input {...F('matricule')} placeholder="Ex: MAT001" /></div>
+              <div><label style={S.label}>Nom *</label><input required {...F('nom')} /></div>
+              <div><label style={S.label}>Prénom *</label><input required {...F('prenom')} /></div>
+              <div><label style={S.label}>Email *</label><input required type="email" {...F('email')} /></div>
+              <div><label style={S.label}>Date de naissance</label><input type="date" {...F('date_naissance')} /></div>
 
-              {/* SECTION — Adresse */}
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Adresse</div>
 
-              <div>
-                <label style={S.label}>Numéro de voie</label>
-                <input {...F('numero_voie')} />
-              </div>
-              <div>
-                <label style={S.label}>Nom de rue</label>
-                <input {...F('nom_rue')} />
-              </div>
-              <div>
-                <label style={S.label}>Code postal</label>
-                <input {...F('code_postal')} />
-              </div>
-              <div>
-                <label style={S.label}>Ville</label>
-                <input {...F('ville')} />
-              </div>
+              <div><label style={S.label}>Numéro de voie</label><input {...F('numero_voie')} /></div>
+              <div><label style={S.label}>Nom de rue</label><input {...F('nom_rue')} /></div>
+              <div><label style={S.label}>Code postal</label><input {...F('code_postal')} /></div>
+              <div><label style={S.label}>Ville</label><input {...F('ville')} /></div>
 
-              {/* SECTION — Contrat */}
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Contrat & Rémunération</div>
 
-              <div>
-                <label style={S.label}>Poste</label>
-                <input {...F('poste')} />
-              </div>
-              <div>
-                <label style={S.label}>Département</label>
-                <input {...F('departement')} />
-              </div>
-              <div>
-                <label style={S.label}>Date d'entrée *</label>
-                <input required type="date" {...F('date_entree')} />
-              </div>
+              <div><label style={S.label}>Poste</label><input {...F('poste')} /></div>
+              <div><label style={S.label}>Département</label><input {...F('departement')} /></div>
+              <div><label style={S.label}>Date d'entrée *</label><input required type="date" {...F('date_entree')} /></div>
               <div>
                 <label style={S.label}>Type de contrat</label>
                 <select {...F('type_contrat')} style={{ ...S.input, cursor: 'pointer' }}>
@@ -317,16 +278,9 @@ export default function EmployesPage() {
                   <option>Temps plein</option><option>Temps partiel</option>
                 </select>
               </div>
-              <div>
-                <label style={S.label}>RTT annuel</label>
-                <input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" />
-              </div>
-              <div>
-                <label style={S.label}>Salaire brut annuel (€)</label>
-                <input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" />
-              </div>
+              <div><label style={S.label}>RTT annuel</label><input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" /></div>
+              <div><label style={S.label}>Salaire brut annuel (€)</label><input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" /></div>
 
-              {/* SECTION — Compteurs */}
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>
                 {employeSelectionne ? 'Modifier les compteurs' : 'Reprise des compteurs (optionnel)'}
               </div>
@@ -341,24 +295,18 @@ export default function EmployesPage() {
 
               <div>
                 <label style={S.label}>CP N-1 à ajouter (j)</label>
-                <input type="number" step="0.5"
-                  value={form.cp_n1_force}
-                  onChange={e => setForm({ ...form, cp_n1_force: parseFloat(e.target.value) || 0 })}
-                  style={S.input} />
+                <input type="number" step="0.5" value={form.cp_n1_force}
+                  onChange={e => setForm({ ...form, cp_n1_force: parseFloat(e.target.value) || 0 })} style={S.input} />
               </div>
               <div>
                 <label style={S.label}>CP N à ajouter (j)</label>
-                <input type="number" step="0.5"
-                  value={form.cp_n_force}
-                  onChange={e => setForm({ ...form, cp_n_force: parseFloat(e.target.value) || 0 })}
-                  style={S.input} />
+                <input type="number" step="0.5" value={form.cp_n_force}
+                  onChange={e => setForm({ ...form, cp_n_force: parseFloat(e.target.value) || 0 })} style={S.input} />
               </div>
               <div>
                 <label style={S.label}>RTT à ajouter (j)</label>
-                <input type="number" step="0.5"
-                  value={form.rtt_force}
-                  onChange={e => setForm({ ...form, rtt_force: parseFloat(e.target.value) || 0 })}
-                  style={S.input} />
+                <input type="number" step="0.5" value={form.rtt_force}
+                  onChange={e => setForm({ ...form, rtt_force: parseFloat(e.target.value) || 0 })} style={S.input} />
               </div>
 
               {/* ACTIONS */}
@@ -473,8 +421,9 @@ export default function EmployesPage() {
                     <td style={{ padding: '15px 24px' }}>
                       <span style={{
                         fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
-                        background: emp.statut === 'Cadre' ? '#EEF2FF' : '#F0EDE9',
-                        color: emp.statut === 'Cadre' ? '#4F46E5' : '#78716C',
+                        // Cadre : bordeaux au lieu d'indigo
+                        background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
+                        color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C',
                       }}>
                         {emp.statut}
                       </span>
