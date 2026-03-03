@@ -66,7 +66,8 @@ export default function SocietePage() {
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+      {/* Spinner bordeaux */}
+      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 
@@ -111,14 +112,11 @@ export default function SocietePage() {
       {/* VUE LECTURE */}
       {!editing && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-
-          {/* Carte identité */}
           <div style={{
             background: 'white', borderRadius: '16px',
             border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             overflow: 'hidden', gridColumn: '1 / -1'
           }}>
-            {/* Header carte */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{
                 width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
@@ -137,8 +135,6 @@ export default function SocietePage() {
                 </p>
               </div>
             </div>
-
-            {/* Champs */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
               <InfoField label="Raison sociale" value={societe?.raison_sociale} />
               <InfoField label="Adresse complète" value={adresse} />
@@ -146,7 +142,6 @@ export default function SocietePage() {
               <InfoField label="Code NAF" value={societe?.code_naf} mono />
             </div>
           </div>
-
         </div>
       )}
 
@@ -164,7 +159,6 @@ export default function SocietePage() {
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gap: '16px' }}>
 
-              {/* Section entreprise */}
               <div style={{
                 fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
                 letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9'
@@ -189,7 +183,6 @@ export default function SocietePage() {
                 </div>
               </div>
 
-              {/* Section adresse */}
               <div style={{
                 fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
                 letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9', marginTop: '8px'
@@ -221,7 +214,6 @@ export default function SocietePage() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #F0EDE9' }}>
                 <button type="submit" style={{
                   padding: '10px 20px', borderRadius: '10px', border: 'none',
