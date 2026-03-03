@@ -29,10 +29,10 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 
 const TYPE_CONFIG = {
   'CP':                  { bg: '#EFF6FF', color: '#2563EB' },
-  'RTT':                 { bg: '#EEF2FF', color: '#4F46E5' },
+  'RTT':                 { bg: '#F9EEF1', color: '#6B2F42' },   // bordeaux — remplace indigo
   'Maladie':             { bg: '#FEF2F2', color: '#DC2626' },
   'Maternité':           { bg: '#FDF4FF', color: '#A21CAF' },
-  'Paternité':           { bg: '#F0FDF4', color: '#16A34A' },
+  'Paternité':           { bg: '#F2E6E9', color: '#8B4A5A' },   // bordeaux clair — remplace vert (déjà pris par statut Approuvée)
   'Congé sans solde':    { bg: '#F0EDE9', color: '#78716C' },
   'Événement familial':  { bg: '#FFFBEB', color: '#B45309' },
   'Absence injustifiée': { bg: '#FEF2F2', color: '#991B1B' },
@@ -274,7 +274,8 @@ export default function AbsencesPage() {
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Absences</h1>
           <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
             {absencesFiltrees.length} demande(s)
-            {nbFiltresActifs > 0 && <span style={{ color: '#4F7EF7', marginLeft: '6px' }}>· {nbFiltresActifs} filtre(s) actif(s)</span>}
+            {/* Indicateur filtre : bordeaux au lieu du bleu */}
+            {nbFiltresActifs > 0 && <span style={{ color: '#8B4A5A', marginLeft: '6px' }}>· {nbFiltresActifs} filtre(s) actif(s)</span>}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -393,7 +394,7 @@ export default function AbsencesPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '22px' }}>
                 <input type="checkbox" id="demi_journee" checked={form.demi_journee}
                   onChange={e => setForm({...form, demi_journee: e.target.checked, date_fin: ''})}
-                  style={{ width: '16px', height: '16px', accentColor: '#4F7EF7', cursor: 'pointer' }} />
+                  style={{ width: '16px', height: '16px', accentColor: '#8B4A5A', cursor: 'pointer' }} />
                 <label htmlFor="demi_journee" style={{ fontSize: '13.5px', color: '#44403C', cursor: 'pointer', fontWeight: 500 }}>Demi-journée</label>
               </div>
 
