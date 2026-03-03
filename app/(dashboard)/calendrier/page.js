@@ -3,73 +3,50 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const COULEURS_TYPE = {
-  'CP': 'bg-blue-500',
-  'RTT': 'bg-green-500',
-  'Maladie': 'bg-red-400',
-  'Absence injustifiée': 'bg-gray-500',
-  'Congé sans solde': 'bg-yellow-500',
-  'Événement familial': 'bg-purple-500',
-  'Maternité': 'bg-pink-400',
-  'Paternité': 'bg-indigo-400',
+const TYPE_CONFIG = {
+  'CP':                  { bg: '#DBEAFE', color: '#1D4ED8', dot: '#3B82F6' },
+  'RTT':                 { bg: '#EDE9FE', color: '#4F46E5', dot: '#6366F1' },
+  'Maladie':             { bg: '#FEE2E2', color: '#DC2626', dot: '#EF4444' },
+  'Absence injustifiée': { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' },
+  'Congé sans solde':    { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B' },
+  'Événement familial':  { bg: '#FDF4FF', color: '#A21CAF', dot: '#C026D3' },
+  'Maternité':           { bg: '#FCE7F3', color: '#BE185D', dot: '#EC4899' },
+  'Paternité':           { bg: '#EEF2FF', color: '#4338CA', dot: '#818CF8' },
 }
 
-const COULEURS_STATUT = {
-  'En attente': 'opacity-60 border-2 border-dashed',
-  'Approuvée': 'opacity-100',
-  'Refusée': 'opacity-30 line-through',
-}
+const JOURS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 export default function CalendrierPage() {
   const [absences, setAbsences] = useState([])
   const [employe, setEmploye] = useState(null)
   const [moisActuel, setMoisActuel] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [tooltip, setTooltip] = useState(null)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase
-      .from('employes')
-      .select('*')
-      .eq('email', user.email)
-      .single()
+    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
     setEmploye(emp)
 
-    // Fetch absences sans jointure
     let absData = []
     if (emp.role === 'salarie') {
-      const { data } = await supabase
-        .from('absences')
-        .select('*')
-        .eq('employe_id', emp.id)
-        .neq('statut', 'Refusée')
+      const { data } = await supabase.from('absences').select('*').eq('employe_id', emp.id).neq('statut', 'Refusée')
       absData = data || []
     } else {
-      const { data } = await supabase
-        .from('absences')
-        .select('*')
-        .neq('statut', 'Refusée')
+      const { data } = await supabase.from('absences').select('*').neq('statut', 'Refusée')
       absData = data || []
     }
 
-    // Enrichir avec les noms des employés
     const { data: employesData } = await supabase.from('employes').select('id, nom, prenom')
-    absData = absData.map(abs => ({
-      ...abs,
-      employes: employesData?.find(e => e.id === abs.employe_id) || null
-    }))
-
+    absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
     setAbsences(absData)
     setLoading(false)
   }
 
   const annee = moisActuel.getFullYear()
   const mois = moisActuel.getMonth()
-
   const premierJour = new Date(annee, mois, 1)
   const dernierJour = new Date(annee, mois + 1, 0)
 
@@ -77,130 +54,180 @@ export default function CalendrierPage() {
   if (debutSemaine < 0) debutSemaine = 6
 
   const jours = []
-  for (let i = 0; i < debutSemaine; i++) {
-    jours.push(null)
-  }
-  for (let i = 1; i <= dernierJour.getDate(); i++) {
-    jours.push(new Date(annee, mois, i))
-  }
+  for (let i = 0; i < debutSemaine; i++) jours.push(null)
+  for (let i = 1; i <= dernierJour.getDate(); i++) jours.push(new Date(annee, mois, i))
 
   const getAbsencesDuJour = (jour) => {
     if (!jour) return []
     return absences.filter(abs => {
-      const debut = new Date(abs.date_debut)
-      const fin = new Date(abs.date_fin || abs.date_debut)
-      debut.setHours(0, 0, 0, 0)
-      fin.setHours(23, 59, 59, 999)
-      const jourCopy = new Date(jour)
-      jourCopy.setHours(12, 0, 0, 0)
-      return jourCopy >= debut && jourCopy <= fin
+      const debut = new Date(abs.date_debut); debut.setHours(0, 0, 0, 0)
+      const fin = new Date(abs.date_fin || abs.date_debut); fin.setHours(23, 59, 59, 999)
+      const j = new Date(jour); j.setHours(12, 0, 0, 0)
+      return j >= debut && j <= fin
     })
   }
-
-  const moisPrecedent = () => setMoisActuel(new Date(annee, mois - 1, 1))
-  const moisSuivant = () => setMoisActuel(new Date(annee, mois + 1, 1))
-
-  const nomMois = moisActuel.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
   const isAujourdhui = (jour) => {
     if (!jour) return false
     const today = new Date()
-    return jour.getDate() === today.getDate() &&
-      jour.getMonth() === today.getMonth() &&
-      jour.getFullYear() === today.getFullYear()
+    return jour.getDate() === today.getDate() && jour.getMonth() === today.getMonth() && jour.getFullYear() === today.getFullYear()
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Chargement...</div>
+  const nomMois = moisActuel.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const isManager = employe?.role !== 'salarie'
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  )
 
   return (
-    <div className="p-8">
+    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
 
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Calendrier</h1>
-          <p className="text-gray-500">
-            {employe?.role === 'salarie' ? 'Vos absences' : "Absences de l'équipe"}
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Calendrier</h1>
+          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
+            {isManager ? "Absences de l'équipe" : "Vos absences"}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={moisPrecedent}
-            className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition text-gray-600 font-bold">
-            ‹
+
+        {/* Navigation mois */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => setMoisActuel(new Date(annee, mois - 1, 1))}
+            style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              border: '1px solid #E8E4E0', background: 'white', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#78716C',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+            onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <span className="text-base font-semibold text-gray-800 capitalize w-40 text-center">
+
+          <span style={{
+            fontSize: '14px', fontWeight: 600, color: '#1C1917',
+            width: '160px', textAlign: 'center', textTransform: 'capitalize'
+          }}>
             {nomMois}
           </span>
-          <button onClick={moisSuivant}
-            className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition text-gray-600 font-bold">
-            ›
+
+          <button onClick={() => setMoisActuel(new Date(annee, mois + 1, 1))}
+            style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              border: '1px solid #E8E4E0', background: 'white', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#78716C',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+            onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
+          <button onClick={() => setMoisActuel(new Date())}
+            style={{
+              padding: '8px 14px', borderRadius: '10px', border: '1px solid #E8E4E0',
+              background: 'white', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: '13px', fontWeight: 500, color: '#78716C',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+            onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+            Aujourd'hui
           </button>
         </div>
       </div>
 
-      {/* Légende */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        {Object.entries(COULEURS_TYPE).map(([type, couleur]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded-full ${couleur}`}></div>
-            <span className="text-xs text-gray-500">{type}</span>
+      {/* LÉGENDE */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+        {Object.entries(TYPE_CONFIG).map(([type, conf]) => (
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '20px', background: conf.bg }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: conf.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: '12px', fontWeight: 500, color: conf.color }}>{type}</span>
           </div>
         ))}
-        <div className="flex items-center gap-1.5 ml-4">
-          <div className="w-3 h-3 rounded-full bg-blue-400 opacity-60"></div>
-          <span className="text-xs text-gray-500">En attente</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '20px', background: '#F0EDE9' }}>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#C4B5A5', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', fontWeight: 500, color: '#78716C' }}>En attente</span>
         </div>
       </div>
 
-      {/* Calendrier */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* CALENDRIER */}
+      <div style={{
+        background: 'white', borderRadius: '16px',
+        border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
+      }}>
 
-        {/* En-têtes jours */}
-        <div className="grid grid-cols-7 border-b border-gray-100">
-          {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
-            <div key={j} className="py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wide">
-              {j}
-            </div>
+        {/* En-têtes */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #F0EDE9' }}>
+          {JOURS_FR.map((j, i) => (
+            <div key={j} style={{
+              padding: '12px', textAlign: 'center',
+              fontSize: '11px', fontWeight: 600, letterSpacing: '0.07em',
+              color: i >= 5 ? '#C4B5A5' : '#A8A29E',
+              textTransform: 'uppercase',
+              background: i >= 5 ? '#FAF8F6' : 'transparent',
+            }}>{j}</div>
           ))}
         </div>
 
-        {/* Grille des jours */}
-        <div className="grid grid-cols-7">
+        {/* Grille */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {jours.map((jour, index) => {
             const absencesDuJour = getAbsencesDuJour(jour)
             const estWeekend = jour && (jour.getDay() === 0 || jour.getDay() === 6)
+            const estAujourdhui = isAujourdhui(jour)
 
             return (
-              <div key={index}
-                className={`min-h-24 p-2 border-b border-r border-gray-50 ${
-                  !jour ? 'bg-gray-50' : estWeekend ? 'bg-gray-50/50' : 'bg-white'
-                } ${isAujourdhui(jour) ? 'ring-2 ring-inset ring-blue-500' : ''}`}>
-
+              <div key={index} style={{
+                minHeight: '110px', padding: '8px',
+                borderRight: '1px solid #FAF8F6',
+                borderBottom: '1px solid #FAF8F6',
+                background: !jour ? '#FAFAF9' : estWeekend ? '#FAF8F6' : 'white',
+                position: 'relative',
+                outline: estAujourdhui ? '2px solid #4F7EF7' : 'none',
+                outlineOffset: '-2px',
+                borderRadius: estAujourdhui ? '4px' : '0',
+              }}>
                 {jour && (
                   <>
-                    <span className={`text-sm font-medium ${
-                      isAujourdhui(jour) ? 'text-blue-600' :
-                      estWeekend ? 'text-gray-400' : 'text-gray-700'
-                    }`}>
-                      {jour.getDate()}
-                    </span>
+                    {/* Numéro du jour */}
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '13px', fontWeight: estAujourdhui ? 700 : 400,
+                        color: estAujourdhui ? 'white' : estWeekend ? '#C4B5A5' : '#44403C',
+                        width: '24px', height: '24px', borderRadius: '8px',
+                        background: estAujourdhui ? '#4F7EF7' : 'transparent',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {jour.getDate()}
+                      </span>
+                    </div>
 
-                    <div className="mt-1 space-y-1">
-                      {absencesDuJour.slice(0, 3).map((abs, i) => (
-                        <div key={i}
-                          title={`${abs.employes?.prenom} ${abs.employes?.nom} — ${abs.type_absence} (${abs.statut})`}
-                          className={`text-xs text-white px-1 py-0.5 rounded truncate cursor-default
-                            ${COULEURS_TYPE[abs.type_absence] || 'bg-gray-400'}
-                            ${COULEURS_STATUT[abs.statut] || ''}
-                          `}>
-                          {employe?.role !== 'salarie'
-                            ? abs.employes?.prenom
-                            : abs.type_absence}
-                        </div>
-                      ))}
+                    {/* Absences */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      {absencesDuJour.slice(0, 3).map((abs, i) => {
+                        const conf = TYPE_CONFIG[abs.type_absence] || { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' }
+                        const enAttente = abs.statut === 'En attente'
+                        return (
+                          <div key={i}
+                            title={`${abs.employes?.prenom} ${abs.employes?.nom} — ${abs.type_absence} (${abs.statut})`}
+                            style={{
+                              fontSize: '11px', fontWeight: 500,
+                              padding: '2px 6px', borderRadius: '4px',
+                              background: conf.bg, color: conf.color,
+                              opacity: enAttente ? 0.6 : 1,
+                              border: enAttente ? `1px dashed ${conf.dot}` : 'none',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              cursor: 'default',
+                            }}>
+                            {isManager ? (abs.employes?.prenom || '?') : abs.type_absence}
+                          </div>
+                        )
+                      })}
                       {absencesDuJour.length > 3 && (
-                        <div className="text-xs text-gray-400 pl-1">
-                          +{absencesDuJour.length - 3}
+                        <div style={{ fontSize: '11px', color: '#A8A29E', padding: '1px 4px', fontWeight: 500 }}>
+                          +{absencesDuJour.length - 3} autre(s)
                         </div>
                       )}
                     </div>
@@ -210,9 +237,50 @@ export default function CalendrierPage() {
             )
           })}
         </div>
-
       </div>
 
+      {/* RÉSUMÉ DU MOIS */}
+      {absences.length > 0 && (() => {
+        const absencesDuMois = absences.filter(abs => {
+          const debut = new Date(abs.date_debut)
+          const fin = new Date(abs.date_fin || abs.date_debut)
+          return debut.getMonth() === mois && debut.getFullYear() === annee ||
+                 fin.getMonth() === mois && fin.getFullYear() === annee
+        })
+        if (absencesDuMois.length === 0) return null
+
+        const parType = absencesDuMois.reduce((acc, abs) => {
+          acc[abs.type_absence] = (acc[abs.type_absence] || 0) + 1
+          return acc
+        }, {})
+
+        return (
+          <div style={{
+            marginTop: '20px', background: 'white', borderRadius: '16px',
+            border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            padding: '18px 24px'
+          }}>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 12px' }}>
+              Résumé — {nomMois}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {Object.entries(parType).map(([type, count]) => {
+                const conf = TYPE_CONFIG[type] || { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' }
+                return (
+                  <div key={type} style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '6px 12px', borderRadius: '10px', background: conf.bg
+                  }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: conf.dot }} />
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: conf.color }}>{type}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: conf.color }}>{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
