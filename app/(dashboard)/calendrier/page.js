@@ -11,7 +11,7 @@ const TYPE_CONFIG = {
   'Congé sans solde':    { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B' },
   'Événement familial':  { bg: '#FDF4FF', color: '#A21CAF', dot: '#C026D3' },
   'Maternité':           { bg: '#FCE7F3', color: '#BE185D', dot: '#EC4899' },
-  'Paternité':           { bg: '#EEF2FF', color: '#4338CA', dot: '#818CF8' },
+  'Paternité':           { bg: '#F9EEF1', color: '#6B2F42', dot: '#8B4A5A' }, // bordeaux — remplace indigo/violet
 }
 
 const JOURS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -78,7 +78,8 @@ export default function CalendrierPage() {
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+      {/* Spinner bordeaux */}
+      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 
@@ -158,7 +159,7 @@ export default function CalendrierPage() {
         border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
       }}>
 
-        {/* En-têtes */}
+        {/* En-têtes jours */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #F0EDE9' }}>
           {JOURS_FR.map((j, i) => (
             <div key={j} style={{
@@ -171,7 +172,7 @@ export default function CalendrierPage() {
           ))}
         </div>
 
-        {/* Grille */}
+        {/* Grille jours */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {jours.map((jour, index) => {
             const absencesDuJour = getAbsencesDuJour(jour)
@@ -185,26 +186,26 @@ export default function CalendrierPage() {
                 borderBottom: '1px solid #FAF8F6',
                 background: !jour ? '#FAFAF9' : estWeekend ? '#FAF8F6' : 'white',
                 position: 'relative',
-                outline: estAujourdhui ? '2px solid #4F7EF7' : 'none',
+                // Aujourd'hui : outline bordeaux au lieu du bleu
+                outline: estAujourdhui ? '2px solid #8B4A5A' : 'none',
                 outlineOffset: '-2px',
                 borderRadius: estAujourdhui ? '4px' : '0',
               }}>
                 {jour && (
                   <>
-                    {/* Numéro du jour */}
                     <div style={{ marginBottom: '4px' }}>
                       <span style={{
                         fontSize: '13px', fontWeight: estAujourdhui ? 700 : 400,
                         color: estAujourdhui ? 'white' : estWeekend ? '#C4B5A5' : '#44403C',
                         width: '24px', height: '24px', borderRadius: '8px',
-                        background: estAujourdhui ? '#4F7EF7' : 'transparent',
+                        // Pastille aujourd'hui : bordeaux
+                        background: estAujourdhui ? '#8B4A5A' : 'transparent',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {jour.getDate()}
                       </span>
                     </div>
 
-                    {/* Absences */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       {absencesDuJour.slice(0, 3).map((abs, i) => {
                         const conf = TYPE_CONFIG[abs.type_absence] || { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' }
