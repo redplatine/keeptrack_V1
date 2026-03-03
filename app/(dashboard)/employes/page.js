@@ -8,26 +8,50 @@ function getAvatarUrl(id) {
   return data.publicUrl
 }
 
-function Avatar({ id, prenom, nom }) {
+function Avatar({ id, prenom, nom, size = 36 }) {
   const [error, setError] = useState(false)
   const url = getAvatarUrl(id)
+  const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
 
   return (
-    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+    <div style={{
+      width: size, height: size, borderRadius: '10px', flexShrink: 0,
+      background: '#EDE9FE', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }}>
       {!error ? (
-        <img
-          src={`${url}?t=${id}`}
-          alt={`${prenom} ${nom}`}
-          className="w-full h-full object-cover"
-          onError={() => setError(true)}
-        />
+        <img src={`${url}?t=${id}`} alt={`${prenom} ${nom}`}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setError(true)} />
       ) : (
-        <span className="text-gray-400 text-xs font-medium">
-          {prenom?.[0]}{nom?.[0]}
-        </span>
+        <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#4F46E5' }}>{initiales}</span>
       )}
     </div>
   )
+}
+
+const CONTRAT_CONFIG = {
+  'CDI':        { bg: '#EEF2FF', color: '#4F46E5' },
+  'CDD':        { bg: '#FFFBEB', color: '#B45309' },
+  'Alternance': { bg: '#F0FDF4', color: '#16A34A' },
+  'Stage':      { bg: '#F0EDE9', color: '#78716C' },
+}
+
+const S = {
+  input: {
+    width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px',
+    padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6',
+    outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box',
+  },
+  label: {
+    fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px',
+    display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em'
+  },
+  sectionTitle: {
+    fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
+    letterSpacing: '0.1em', padding: '0 0 10px', borderBottom: '1px solid #F0EDE9',
+    marginBottom: '16px', gridColumn: '1 / -1'
+  },
 }
 
 export default function EmployesPage() {
@@ -46,36 +70,28 @@ export default function EmployesPage() {
     cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
   })
 
-  useEffect(() => {
-    fetchEmployes()
-  }, [])
+  useEffect(() => { fetchEmployes() }, [])
 
   const fetchEmployes = async () => {
-    const { data, error } = await supabase
-      .from('employes')
-      .select('*')
-      .order('nom')
+    const { data, error } = await supabase.from('employes').select('*').order('nom')
     if (!error) setEmployes(data)
     setLoading(false)
   }
 
-  const resetForm = () => {
-    setForm({
-      matricule: '', nom: '', prenom: '', email: '', poste: '',
-      departement: '', type_contrat: 'CDI', statut: 'Non-cadre',
-      temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
-      numero_voie: '', nom_rue: '', code_postal: '', ville: '',
-      date_naissance: '', rtt_annuel: 0,
-      cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
-    })
-  }
+  const resetForm = () => setForm({
+    matricule: '', nom: '', prenom: '', email: '', poste: '',
+    departement: '', type_contrat: 'CDI', statut: 'Non-cadre',
+    temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
+    numero_voie: '', nom_rue: '', code_postal: '', ville: '',
+    date_naissance: '', rtt_annuel: 0,
+    cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
+  })
 
   const handleEnvoyerInvitation = async () => {
     if (!form.email) return
     setInvitationLoading(true)
     const response = await fetch('/api/inviter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: form.email }),
     })
     const data = await response.json()
@@ -86,404 +102,390 @@ export default function EmployesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     const formNettoye = {
-      matricule: form.matricule || null,
-      nom: form.nom,
-      prenom: form.prenom,
-      email: form.email,
-      poste: form.poste || null,
-      departement: form.departement || null,
-      type_contrat: form.type_contrat,
-      statut: form.statut,
-      temps_travail: form.temps_travail,
-      date_entree: form.date_entree || null,
-      salaire_brut: form.salaire_brut || null,
-      numero_voie: form.numero_voie || null,
-      nom_rue: form.nom_rue || null,
-      code_postal: form.code_postal || null,
-      ville: form.ville || null,
-      date_naissance: form.date_naissance || null,
-      rtt_annuel: form.rtt_annuel || 0,
+      matricule: form.matricule || null, nom: form.nom, prenom: form.prenom,
+      email: form.email, poste: form.poste || null, departement: form.departement || null,
+      type_contrat: form.type_contrat, statut: form.statut, temps_travail: form.temps_travail,
+      date_entree: form.date_entree || null, salaire_brut: form.salaire_brut || null,
+      numero_voie: form.numero_voie || null, nom_rue: form.nom_rue || null,
+      code_postal: form.code_postal || null, ville: form.ville || null,
+      date_naissance: form.date_naissance || null, rtt_annuel: form.rtt_annuel || 0,
     }
-
     const cp_n1 = parseFloat(form.cp_n1_force) || 0
     const cp_n = parseFloat(form.cp_n_force) || 0
     const rtt = parseFloat(form.rtt_force) || 0
     const annee = new Date().getFullYear()
 
     if (employeSelectionne) {
-      const { error } = await supabase
-        .from('employes')
-        .update(formNettoye)
-        .eq('id', employeSelectionne.id)
+      const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
       if (error) { alert('Erreur modification : ' + error.message); return }
-
-      if (
-        form.date_entree !== employeSelectionne.date_entree ||
-        parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)
-      ) {
+      if (form.date_entree !== employeSelectionne.date_entree || parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)) {
         await supabase.rpc('calculer_acquisitions')
       }
-
       if (cp_n1 > 0 || cp_n > 0 || rtt > 0) {
-        const { data: existingSolde } = await supabase
-          .from('soldes_conges').select('*')
-          .eq('employe_id', employeSelectionne.id).eq('annee', annee).single()
-
-        if (existingSolde) {
+        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', employeSelectionne.id).eq('annee', annee).single()
+        if (ex) {
           await supabase.from('soldes_conges').update({
-            cp_n1_acquis: (existingSolde.cp_n1_acquis || 0) + cp_n1,
-            cp_n1_solde: (existingSolde.cp_n1_solde || 0) + cp_n1,
-            cp_n_acquis: (existingSolde.cp_n_acquis || 0) + cp_n,
-            cp_n_solde: (existingSolde.cp_n_solde || 0) + cp_n,
-            rtt_acquis: (existingSolde.rtt_acquis || 0) + rtt,
-            rtt_solde: (existingSolde.rtt_solde || 0) + rtt,
+            cp_n1_acquis: (ex.cp_n1_acquis || 0) + cp_n1, cp_n1_solde: (ex.cp_n1_solde || 0) + cp_n1,
+            cp_n_acquis: (ex.cp_n_acquis || 0) + cp_n, cp_n_solde: (ex.cp_n_solde || 0) + cp_n,
+            rtt_acquis: (ex.rtt_acquis || 0) + rtt, rtt_solde: (ex.rtt_solde || 0) + rtt,
             cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt,
           }).eq('employe_id', employeSelectionne.id).eq('annee', annee)
         } else {
-          await supabase.from('soldes_conges').insert({
-            employe_id: employeSelectionne.id, annee,
-            cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1,
-            cp_n_acquis: cp_n, cp_n_solde: cp_n,
-            rtt_acquis: rtt, rtt_solde: rtt,
-            cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt,
-          })
+          await supabase.from('soldes_conges').insert({ employe_id: employeSelectionne.id, annee, cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1, cp_n_acquis: cp_n, cp_n_solde: cp_n, rtt_acquis: rtt, rtt_solde: rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt })
         }
       }
     } else {
-      const { data: newEmp, error } = await supabase
-        .from('employes').insert([formNettoye]).select().single()
+      const { data: newEmp, error } = await supabase.from('employes').insert([formNettoye]).select().single()
       if (error) { alert('Erreur création : ' + error.message); return }
-
       await supabase.rpc('calculer_acquisitions')
-
       if (cp_n1 > 0 || cp_n > 0 || rtt > 0) {
-        const { data: existingSolde } = await supabase
-          .from('soldes_conges').select('*')
-          .eq('employe_id', newEmp.id).eq('annee', annee).single()
-
-        if (existingSolde) {
-          await supabase.from('soldes_conges').update({
-            cp_n1_acquis: (existingSolde.cp_n1_acquis || 0) + cp_n1,
-            cp_n1_solde: (existingSolde.cp_n1_solde || 0) + cp_n1,
-            cp_n_acquis: (existingSolde.cp_n_acquis || 0) + cp_n,
-            cp_n_solde: (existingSolde.cp_n_solde || 0) + cp_n,
-            rtt_acquis: (existingSolde.rtt_acquis || 0) + rtt,
-            rtt_solde: (existingSolde.rtt_solde || 0) + rtt,
-            cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt,
-          }).eq('employe_id', newEmp.id).eq('annee', annee)
+        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', newEmp.id).eq('annee', annee).single()
+        if (ex) {
+          await supabase.from('soldes_conges').update({ cp_n1_acquis: (ex.cp_n1_acquis || 0) + cp_n1, cp_n1_solde: (ex.cp_n1_solde || 0) + cp_n1, cp_n_acquis: (ex.cp_n_acquis || 0) + cp_n, cp_n_solde: (ex.cp_n_solde || 0) + cp_n, rtt_acquis: (ex.rtt_acquis || 0) + rtt, rtt_solde: (ex.rtt_solde || 0) + rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt }).eq('employe_id', newEmp.id).eq('annee', annee)
         } else {
-          await supabase.from('soldes_conges').insert({
-            employe_id: newEmp.id, annee,
-            cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1,
-            cp_n_acquis: cp_n, cp_n_solde: cp_n,
-            rtt_acquis: rtt, rtt_solde: rtt,
-            cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt,
-          })
+          await supabase.from('soldes_conges').insert({ employe_id: newEmp.id, annee, cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1, cp_n_acquis: cp_n, cp_n_solde: cp_n, rtt_acquis: rtt, rtt_solde: rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt })
         }
       }
     }
-
-    setShowForm(false)
-    setEmployeSelectionne(null)
-    setInvitationEnvoyee(false)
-    resetForm()
-    fetchEmployes()
+    setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); fetchEmployes()
   }
 
   const handleDoubleClick = (emp) => {
-    setEmployeSelectionne(emp)
-    setInvitationEnvoyee(false)
+    setEmployeSelectionne(emp); setInvitationEnvoyee(false)
     setForm({
-      matricule: emp.matricule || '',
-      nom: emp.nom || '',
-      prenom: emp.prenom || '',
-      email: emp.email || '',
-      poste: emp.poste || '',
-      departement: emp.departement || '',
-      type_contrat: emp.type_contrat || 'CDI',
-      statut: emp.statut || 'Non-cadre',
-      temps_travail: emp.temps_travail || 'Temps plein',
-      date_entree: emp.date_entree || '',
-      salaire_brut: emp.salaire_brut || '',
-      numero_voie: emp.numero_voie || '',
-      nom_rue: emp.nom_rue || '',
-      code_postal: emp.code_postal || '',
-      ville: emp.ville || '',
-      date_naissance: emp.date_naissance || '',
-      rtt_annuel: emp.rtt_annuel || 0,
+      matricule: emp.matricule || '', nom: emp.nom || '', prenom: emp.prenom || '',
+      email: emp.email || '', poste: emp.poste || '', departement: emp.departement || '',
+      type_contrat: emp.type_contrat || 'CDI', statut: emp.statut || 'Non-cadre',
+      temps_travail: emp.temps_travail || 'Temps plein', date_entree: emp.date_entree || '',
+      salaire_brut: emp.salaire_brut || '', numero_voie: emp.numero_voie || '',
+      nom_rue: emp.nom_rue || '', code_postal: emp.code_postal || '', ville: emp.ville || '',
+      date_naissance: emp.date_naissance || '', rtt_annuel: emp.rtt_annuel || 0,
       cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
     })
-    setShowForm(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleSupprimer = async () => {
-    const confirmation = window.confirm(
-      `Voulez-vous vraiment supprimer ${employeSelectionne.prenom} ${employeSelectionne.nom} ? Cette action est irréversible.`
-    )
-    if (!confirmation) return
+    if (!window.confirm(`Supprimer ${employeSelectionne.prenom} ${employeSelectionne.nom} ? Cette action est irréversible.`)) return
     await supabase.from('soldes_conges').delete().eq('employe_id', employeSelectionne.id)
     await supabase.from('absences').delete().eq('employe_id', employeSelectionne.id)
     await supabase.from('employes').delete().eq('id', employeSelectionne.id)
-    setShowForm(false)
-    setEmployeSelectionne(null)
-    resetForm()
-    fetchEmployes()
+    setShowForm(false); setEmployeSelectionne(null); resetForm(); fetchEmployes()
   }
 
-  return (
-    <div className="p-8">
+  const F = (key, extra = {}) => ({
+    value: form[key],
+    onChange: e => setForm({ ...form, [key]: e.target.value }),
+    style: { ...S.input, ...extra }
+  })
 
-      <div className="flex justify-between items-center mb-8">
+  return (
+    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Employés</h1>
-          <p className="text-gray-500">{employes.length} salarié(s) — double-cliquez pour ouvrir une fiche</p>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Employés</h1>
+          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
+            {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
+          </p>
         </div>
-        <button
-          onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
-          className="bg-blue-600 text-white px-5 py-2 rounded-xl font-medium hover:bg-blue-700 transition"
-        >
-          + Ajouter un employé
+        <button onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            padding: '9px 16px', borderRadius: '10px', border: 'none',
+            background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
+          onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un employé
         </button>
       </div>
 
+      {/* FORMULAIRE */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-
-          <div className="flex justify-between items-start mb-6">
-            <h2 className="text-lg font-semibold text-gray-800">
-              {employeSelectionne ? `Fiche — ${employeSelectionne.prenom} ${employeSelectionne.nom}` : 'Nouvel employé'}
-            </h2>
+        <div style={{
+          background: 'white', borderRadius: '16px', padding: '28px 32px',
+          border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '24px'
+        }}>
+          {/* Form header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {employeSelectionne && <Avatar id={employeSelectionne.id} prenom={employeSelectionne.prenom} nom={employeSelectionne.nom} size={40} />}
+              <div>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#1C1917', margin: 0 }}>
+                  {employeSelectionne ? `${employeSelectionne.prenom} ${employeSelectionne.nom}` : 'Nouvel employé'}
+                </h2>
+                {employeSelectionne && <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>Modification de la fiche</p>}
+              </div>
+            </div>
             {employeSelectionne && (
-              <button
-                onClick={handleEnvoyerInvitation}
-                disabled={invitationLoading || invitationEnvoyee}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-                  invitationEnvoyee
-                    ? 'bg-green-50 text-green-600 cursor-default'
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                }`}
-              >
-                {invitationLoading ? '⏳ Envoi...' : invitationEnvoyee ? '✅ Invitation envoyée !' : '✉️ Envoyer invitation'}
+              <button onClick={handleEnvoyerInvitation} disabled={invitationLoading || invitationEnvoyee}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                  padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                  cursor: invitationEnvoyee ? 'default' : 'pointer', fontFamily: 'inherit',
+                  border: invitationEnvoyee ? '1px solid #BBF7D0' : '1px solid #E8E4E0',
+                  background: invitationEnvoyee ? '#F0FDF4' : '#FAF8F6',
+                  color: invitationEnvoyee ? '#16A34A' : '#44403C',
+                }}>
+                {invitationLoading ? '⏳ Envoi…' : invitationEnvoyee ? '✓ Invitation envoyée' : '✉ Envoyer invitation'}
               </button>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
-            <div className="col-span-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Informations personnelles</h3>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
-              <input value={form.matricule} onChange={e => setForm({...form, matricule: e.target.value})}
-                placeholder="Ex: MAT001"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-              <input required value={form.nom} onChange={e => setForm({...form, nom: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-              <input required value={form.prenom} onChange={e => setForm({...form, prenom: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input required type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
-              <input type="date" value={form.date_naissance} onChange={e => setForm({...form, date_naissance: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+              {/* SECTION — Informations personnelles */}
+              <div style={S.sectionTitle}>Informations personnelles</div>
 
-            <div className="col-span-2 mt-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Adresse</h3>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de voie</label>
-              <input value={form.numero_voie} onChange={e => setForm({...form, numero_voie: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom de rue</label>
-              <input value={form.nom_rue} onChange={e => setForm({...form, nom_rue: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
-              <input value={form.code_postal} onChange={e => setForm({...form, code_postal: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-              <input value={form.ville} onChange={e => setForm({...form, ville: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+              <div>
+                <label style={S.label}>Matricule</label>
+                <input {...F('matricule')} placeholder="Ex: MAT001" />
+              </div>
+              <div>
+                <label style={S.label}>Nom *</label>
+                <input required {...F('nom')} />
+              </div>
+              <div>
+                <label style={S.label}>Prénom *</label>
+                <input required {...F('prenom')} />
+              </div>
+              <div>
+                <label style={S.label}>Email *</label>
+                <input required type="email" {...F('email')} />
+              </div>
+              <div>
+                <label style={S.label}>Date de naissance</label>
+                <input type="date" {...F('date_naissance')} />
+              </div>
 
-            <div className="col-span-2 mt-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Contrat & Rémunération</h3>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Poste</label>
-              <input value={form.poste} onChange={e => setForm({...form, poste: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
-              <input value={form.departement} onChange={e => setForm({...form, departement: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date d'entrée</label>
-              <input required type="date" value={form.date_entree} onChange={e => setForm({...form, date_entree: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type de contrat</label>
-              <select value={form.type_contrat} onChange={e => setForm({...form, type_contrat: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>CDI</option><option>CDD</option><option>Alternance</option><option>Stage</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select value={form.statut} onChange={e => setForm({...form, statut: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>Cadre</option><option>Non-cadre</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Temps de travail</label>
-              <select value={form.temps_travail} onChange={e => setForm({...form, temps_travail: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>Temps plein</option><option>Temps partiel</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">RTT annuel</label>
-              <input type="number" value={form.rtt_annuel} onChange={e => setForm({...form, rtt_annuel: e.target.value})}
-                placeholder="0 si pas de RTT"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salaire brut annuel (€)</label>
-              <input type="number" value={form.salaire_brut} onChange={e => setForm({...form, salaire_brut: e.target.value})}
-                placeholder="Ex: 35000"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+              {/* SECTION — Adresse */}
+              <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Adresse</div>
 
-            <div className="col-span-2 mt-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <div>
+                <label style={S.label}>Numéro de voie</label>
+                <input {...F('numero_voie')} />
+              </div>
+              <div>
+                <label style={S.label}>Nom de rue</label>
+                <input {...F('nom_rue')} />
+              </div>
+              <div>
+                <label style={S.label}>Code postal</label>
+                <input {...F('code_postal')} />
+              </div>
+              <div>
+                <label style={S.label}>Ville</label>
+                <input {...F('ville')} />
+              </div>
+
+              {/* SECTION — Contrat */}
+              <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Contrat & Rémunération</div>
+
+              <div>
+                <label style={S.label}>Poste</label>
+                <input {...F('poste')} />
+              </div>
+              <div>
+                <label style={S.label}>Département</label>
+                <input {...F('departement')} />
+              </div>
+              <div>
+                <label style={S.label}>Date d'entrée *</label>
+                <input required type="date" {...F('date_entree')} />
+              </div>
+              <div>
+                <label style={S.label}>Type de contrat</label>
+                <select {...F('type_contrat')} style={{ ...S.input, cursor: 'pointer' }}>
+                  <option>CDI</option><option>CDD</option><option>Alternance</option><option>Stage</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Statut</label>
+                <select {...F('statut')} style={{ ...S.input, cursor: 'pointer' }}>
+                  <option>Cadre</option><option>Non-cadre</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Temps de travail</label>
+                <select {...F('temps_travail')} style={{ ...S.input, cursor: 'pointer' }}>
+                  <option>Temps plein</option><option>Temps partiel</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>RTT annuel</label>
+                <input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" />
+              </div>
+              <div>
+                <label style={S.label}>Salaire brut annuel (€)</label>
+                <input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" />
+              </div>
+
+              {/* SECTION — Compteurs */}
+              <div style={{ ...S.sectionTitle, marginTop: '8px' }}>
                 {employeSelectionne ? 'Modifier les compteurs' : 'Reprise des compteurs (optionnel)'}
-              </h3>
-              <p className="text-xs text-gray-400 mb-3">
-                {employeSelectionne
-                  ? 'Les valeurs saisies seront additionnées aux compteurs existants'
-                  : 'À remplir uniquement pour les salariés ayant déjà des compteurs existants'}
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CP N-1 à ajouter (jours)</label>
-              <input type="number" step="0.5" value={form.cp_n1_force}
-                onChange={e => setForm({...form, cp_n1_force: parseFloat(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CP N à ajouter (jours)</label>
-              <input type="number" step="0.5" value={form.cp_n_force}
-                onChange={e => setForm({...form, cp_n_force: parseFloat(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">RTT à ajouter (jours)</label>
-              <input type="number" step="0.5" value={form.rtt_force}
-                onChange={e => setForm({...form, rtt_force: parseFloat(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+              </div>
 
-            <div className="col-span-2 flex gap-3 mt-2">
-              <button type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-blue-700 transition">
-                {employeSelectionne ? 'Enregistrer les modifications' : 'Enregistrer'}
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }}
-                className="bg-gray-100 text-gray-600 px-6 py-2 rounded-xl font-medium hover:bg-gray-200 transition">
-                Annuler
-              </button>
-              {employeSelectionne && (
-                <button type="button" onClick={handleSupprimer}
-                  className="ml-auto bg-red-50 text-red-500 px-6 py-2 rounded-xl font-medium hover:bg-red-100 transition">
-                  🗑️ Supprimer
+              <div style={{ gridColumn: '1 / -1', marginTop: '-8px', marginBottom: '8px' }}>
+                <p style={{ fontSize: '12px', color: '#A8A29E' }}>
+                  {employeSelectionne
+                    ? 'Les valeurs saisies seront additionnées aux compteurs existants'
+                    : 'À remplir uniquement pour les salariés ayant déjà des compteurs existants'}
+                </p>
+              </div>
+
+              <div>
+                <label style={S.label}>CP N-1 à ajouter (j)</label>
+                <input type="number" step="0.5"
+                  value={form.cp_n1_force}
+                  onChange={e => setForm({ ...form, cp_n1_force: parseFloat(e.target.value) || 0 })}
+                  style={S.input} />
+              </div>
+              <div>
+                <label style={S.label}>CP N à ajouter (j)</label>
+                <input type="number" step="0.5"
+                  value={form.cp_n_force}
+                  onChange={e => setForm({ ...form, cp_n_force: parseFloat(e.target.value) || 0 })}
+                  style={S.input} />
+              </div>
+              <div>
+                <label style={S.label}>RTT à ajouter (j)</label>
+                <input type="number" step="0.5"
+                  value={form.rtt_force}
+                  onChange={e => setForm({ ...form, rtt_force: parseFloat(e.target.value) || 0 })}
+                  style={S.input} />
+              </div>
+
+              {/* ACTIONS */}
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #F0EDE9' }}>
+                <button type="submit" style={{
+                  padding: '10px 20px', borderRadius: '10px', border: 'none',
+                  background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
+                  {employeSelectionne ? 'Enregistrer les modifications' : 'Enregistrer'}
                 </button>
-              )}
-            </div>
+                <button type="button"
+                  onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }}
+                  style={{
+                    padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
+                    background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  Annuler
+                </button>
+                {employeSelectionne && (
+                  <button type="button" onClick={handleSupprimer}
+                    style={{
+                      marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '10px 20px', borderRadius: '10px', border: '1px solid #FECACA',
+                      background: '#FEF2F2', color: '#DC2626', fontSize: '13.5px', fontWeight: 500,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    Supprimer
+                  </button>
+                )}
+              </div>
 
+            </div>
           </form>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+      {/* TABLEAU */}
+      <div style={{
+        background: 'white', borderRadius: '16px',
+        border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
+      }}>
         {loading ? (
-          <div className="p-8 text-center text-gray-400">Chargement...</div>
+          <div style={{ padding: '60px', textAlign: 'center', color: '#A8A29E' }}>Chargement…</div>
         ) : employes.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">Aucun employé pour l'instant.</div>
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
+            <p style={{ color: '#A8A29E', fontSize: '14px' }}>Aucun employé pour l'instant</p>
+          </div>
         ) : (
-          <table className="w-full">
-            <thead className="border-b border-gray-100">
-              <tr>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Matricule</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Nom</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Poste</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Contrat</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Entrée</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Statut</th>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#FAF8F6' }}>
+                {['Matricule', 'Nom', 'Poste', 'Contrat', 'Entrée', 'Statut'].map(h => (
+                  <th key={h} style={{
+                    padding: '12px 24px', textAlign: 'left',
+                    fontSize: '11px', fontWeight: 600, color: '#A8A29E',
+                    textTransform: 'uppercase', letterSpacing: '0.07em',
+                    borderBottom: '1px solid #F0EDE9'
+                  }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {employes.map((emp) => (
-                <tr
-                  key={emp.id}
-                  onDoubleClick={() => handleDoubleClick(emp)}
-                  className="border-b border-gray-50 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <td className="px-6 py-4 text-gray-500 text-sm">{emp.matricule || '—'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} />
-                      <div>
-                        <div className="font-medium text-gray-800">{emp.prenom} {emp.nom}</div>
-                        <div className="text-sm text-gray-400">{emp.email}</div>
+              {employes.map(emp => {
+                const cc = CONTRAT_CONFIG[emp.type_contrat] || CONTRAT_CONFIG['CDI']
+                return (
+                  <tr key={emp.id}
+                    onDoubleClick={() => handleDoubleClick(emp)}
+                    style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 600, fontFamily: 'monospace',
+                        background: '#F0EDE9', color: '#78716C', padding: '4px 9px', borderRadius: '6px'
+                      }}>
+                        {emp.matricule || '—'}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} />
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: '#1C1917' }}>{emp.prenom} {emp.nom}</div>
+                          <div style={{ fontSize: '12px', color: '#A8A29E' }}>{emp.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{emp.poste || '—'}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-50 text-blue-600 text-xs font-medium px-2 py-1 rounded-full">
-                      {emp.type_contrat}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 text-sm">{emp.date_entree}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      emp.statut === 'Cadre' ? 'bg-purple-50 text-purple-600' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {emp.statut}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.poste || '—'}</td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{
+                        fontSize: '12px', fontWeight: 600, padding: '4px 10px',
+                        borderRadius: '6px', background: cc.bg, color: cc.color
+                      }}>
+                        {emp.type_contrat}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.date_entree || '—'}</td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{
+                        fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
+                        background: emp.statut === 'Cadre' ? '#EEF2FF' : '#F0EDE9',
+                        color: emp.statut === 'Cadre' ? '#4F46E5' : '#78716C',
+                      }}>
+                        {emp.statut}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
       </div>
-
     </div>
   )
 }
