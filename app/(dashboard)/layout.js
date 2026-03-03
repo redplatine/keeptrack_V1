@@ -48,10 +48,25 @@ const NAV_ICONS = {
   ),
 }
 
+// Palette bordeaux — subtile, désaturée, mat
+const SIDEBAR = {
+  bg:          '#4A2330',
+  border:      '#5E2D3C',
+  hoverBg:     '#5C2D3A',
+  activeBg:    '#6B2F42',
+  activeColor: '#F9C7D0',
+  textPrimary: '#E8D5D9',
+  textMuted:   '#9E737D',
+  iconMuted:   '#7A5560',
+  logoBg:      'rgba(255,255,255,0.08)',
+  userCardBg:  'rgba(0,0,0,0.15)',
+  logoutHover: 'rgba(220,38,38,0.18)',
+}
+
 const ROLE_CONFIG = {
-  admin:   { label: 'Administrateur', bg: '#EEF2FF', color: '#4F46E5' },
-  manager: { label: 'Manager',        bg: '#EFF6FF', color: '#2563EB' },
-  salarie: { label: 'Salarié',        bg: '#F0FDF4', color: '#16A34A' },
+  admin:   { label: 'Administrateur', bg: 'rgba(249,199,208,0.18)', color: '#F9C7D0' },
+  manager: { label: 'Manager',        bg: 'rgba(147,197,253,0.18)', color: '#BAD9FC' },
+  salarie: { label: 'Salarié',        bg: 'rgba(134,239,172,0.18)', color: '#A7F3C0' },
 }
 
 export default function DashboardLayout({ children }) {
@@ -109,21 +124,21 @@ export default function DashboardLayout({ children }) {
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#F7F8FC', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="min-h-screen flex" style={{ background: '#F7F5F3', fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
       {/* SIDEBAR */}
       <div className="w-60 flex flex-col fixed h-full" style={{
-        background: '#FFFFFF',
-        borderRight: '1px solid #EAECF0',
-        boxShadow: '2px 0 16px rgba(0,0,0,0.04)'
+        background: SIDEBAR.bg,
+        borderRight: `1px solid ${SIDEBAR.border}`,
+        boxShadow: '2px 0 16px rgba(0,0,0,0.12)'
       }}>
 
         {/* LOGO */}
-        <div className="px-5 pt-7 pb-5" style={{ borderBottom: '1px solid #F2F4F7' }}>
+        <div className="px-5 pt-7 pb-5" style={{ borderBottom: `1px solid ${SIDEBAR.border}` }}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #4F7EF7, #6366F1)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              style={{ background: SIDEBAR.logoBg, border: '1px solid rgba(255,255,255,0.12)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SIDEBAR.activeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
@@ -133,17 +148,21 @@ export default function DashboardLayout({ children }) {
               </svg>
             </div>
             <div>
-              <h1 className="font-bold leading-tight" style={{ fontSize: '15px', color: '#111827', letterSpacing: '-0.3px' }}>KeepTrack</h1>
-              <p style={{ fontSize: '11px', color: '#9CA3AF', lineHeight: 1.3 }}>GTA Specialist App</p>
+              <h1 className="font-bold leading-tight" style={{ fontSize: '15px', color: '#F0E8EA', letterSpacing: '-0.3px' }}>KeepTrack</h1>
+              <p style={{ fontSize: '11px', color: SIDEBAR.textMuted, lineHeight: 1.3 }}>GTA Specialist App</p>
             </div>
           </div>
         </div>
 
         {/* NAV */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-
-          {/* Section label */}
-          <p style={{ fontSize: '10px', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase' }}>
+          <p style={{
+            fontSize: '10px', fontWeight: 600,
+            color: SIDEBAR.textMuted,
+            letterSpacing: '0.08em',
+            padding: '4px 10px 8px',
+            textTransform: 'uppercase'
+          }}>
             Navigation
           </p>
 
@@ -154,23 +173,34 @@ export default function DashboardLayout({ children }) {
                 className="flex items-center justify-between rounded-xl transition-all duration-150"
                 style={{
                   padding: '8px 10px',
-                  background: isActive ? '#EEF2FF' : 'transparent',
-                  color: isActive ? '#4F46E5' : '#6B7280',
+                  background: isActive ? SIDEBAR.activeBg : 'transparent',
+                  color: isActive ? SIDEBAR.activeColor : SIDEBAR.textPrimary,
                   fontWeight: isActive ? 600 : 400,
                   fontSize: '13.5px',
                 }}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.color = '#374151' } }}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B7280' } }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = SIDEBAR.hoverBg
+                    e.currentTarget.style.color = '#F0E8EA'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = SIDEBAR.textPrimary
+                  }
+                }}
               >
                 <div className="flex items-center gap-2.5">
-                  <span style={{ color: isActive ? '#4F46E5' : '#9CA3AF' }}>
+                  <span style={{ color: isActive ? SIDEBAR.activeColor : SIDEBAR.iconMuted }}>
                     {NAV_ICONS[item.href]}
                   </span>
                   <span>{item.label}</span>
                 </div>
                 {item.badge > 0 && (
                   <span style={{
-                    background: '#FEE2E2', color: '#DC2626',
+                    background: 'rgba(220,38,38,0.25)',
+                    color: '#FCA5A5',
                     fontSize: '11px', fontWeight: 700,
                     padding: '1px 7px', borderRadius: '20px'
                   }}>
@@ -183,28 +213,31 @@ export default function DashboardLayout({ children }) {
         </nav>
 
         {/* USER + LOGOUT */}
-        <div className="px-3 pb-5" style={{ borderTop: '1px solid #F2F4F7', paddingTop: '12px' }}>
-
-          {/* User card */}
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl mb-1" style={{ background: '#FAFAFA' }}>
+        <div className="px-3 pb-5" style={{ borderTop: `1px solid ${SIDEBAR.border}`, paddingTop: '12px' }}>
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl mb-1" style={{ background: SIDEBAR.userCardBg }}>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ background: roleConfig.bg, color: roleConfig.color }}>
+              style={{ background: roleConfig.bg, color: roleConfig.color, border: '1px solid rgba(255,255,255,0.1)' }}>
               {initiales || '?'}
             </div>
             <div className="min-w-0 flex-1">
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', lineHeight: 1.3 }} className="truncate">
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#F0E8EA', lineHeight: 1.3 }} className="truncate">
                 {prenom} {nom}
               </p>
-              <p style={{ fontSize: '11px', color: '#9CA3AF', lineHeight: 1.3 }}>{roleConfig.label}</p>
+              <p style={{ fontSize: '11px', color: SIDEBAR.textMuted, lineHeight: 1.3 }}>{roleConfig.label}</p>
             </div>
           </div>
 
-          {/* Logout */}
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2.5 rounded-xl transition-all duration-150"
-            style={{ padding: '8px 10px', color: '#9CA3AF', fontSize: '13.5px', fontWeight: 400 }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF' }}
+            style={{ padding: '8px 10px', color: SIDEBAR.textMuted, fontSize: '13.5px', fontWeight: 400 }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = SIDEBAR.logoutHover
+              e.currentTarget.style.color = '#FCA5A5'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = SIDEBAR.textMuted
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -215,7 +248,7 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 ml-60 overflow-auto min-h-screen" style={{ background: '#F7F8FC' }}>
+      <div className="flex-1 ml-60 overflow-auto min-h-screen" style={{ background: '#F7F5F3' }}>
         {children}
       </div>
     </div>
