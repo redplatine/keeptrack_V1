@@ -53,7 +53,7 @@ function StatCard({ label, value, acquis, pris, accent, iconBg }) {
   )
 }
 
-function QuickStat({ label, value, icon, bg, color }) {
+function QuickStat({ label, value, icon, bg }) {
   return (
     <div style={{
       background: 'white', borderRadius: '16px', padding: '20px 24px',
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
-            border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7',
+            border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A',
             animation: 'spin 0.8s linear infinite', margin: '0 auto 12px'
           }} />
           <p style={{ color: '#A8A29E', fontSize: '14px' }}>Chargement…</p>
@@ -142,8 +142,10 @@ export default function DashboardPage() {
       <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{
           width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
-          background: '#EDE9FE', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: '#4F46E5'
+          // Bordeaux clair, cohérent avec la sidebar
+          background: '#F2E6E9',
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: '#6B2F42'
         }}>
           {initiales}
         </div>
@@ -162,9 +164,9 @@ export default function DashboardPage() {
         <div>
           {/* Quick stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-            <QuickStat label="Salariés" value={equipe.length} icon="👥" bg="#F0EDE9" color="#44403C" />
-            <QuickStat label="Demandes en attente" value={equipe.reduce((a, e) => a + e.demandesEnAttente, 0)} icon="⏳" bg="#FFFBEB" color="#B45309" />
-            <QuickStat label="Année en cours" value={new Date().getFullYear()} icon="📆" bg="#F0FDF4" color="#16A34A" />
+            <QuickStat label="Salariés"            value={equipe.length}                                      icon="👥" bg="#F0EDE9" />
+            <QuickStat label="Demandes en attente" value={equipe.reduce((a, e) => a + e.demandesEnAttente, 0)} icon="⏳" bg="#FFFBEB" />
+            <QuickStat label="Année en cours"      value={new Date().getFullYear()}                           icon="📆" bg="#F0FDF4" />
           </div>
 
           {/* Tableau */}
@@ -173,7 +175,6 @@ export default function DashboardPage() {
             border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             overflow: 'hidden'
           }}>
-            {/* Titre tableau */}
             <div style={{ padding: '22px 28px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: 0 }}>Compteurs de l'équipe</h2>
@@ -187,11 +188,12 @@ export default function DashboardPage() {
                 <tr style={{ background: '#FAF8F6' }}>
                   {[
                     { label: 'Matricule', align: 'left' },
-                    { label: 'Salarié', align: 'left' },
-                    { label: 'Poste', align: 'left' },
-                    { label: 'CP N-1', align: 'center', color: '#2563EB' },
-                    { label: 'CP N', align: 'center', color: '#4F46E5' },
-                    { label: 'RTT', align: 'center', color: '#16A34A' },
+                    { label: 'Salarié',   align: 'left' },
+                    { label: 'Poste',     align: 'left' },
+                    // Bordeaux désaturé pour CP N-1, bleu charte pour CP N, vert charte pour RTT
+                    { label: 'CP N-1',    align: 'center', color: '#8B4A5A' },
+                    { label: 'CP N',      align: 'center', color: '#4F7EF7' },
+                    { label: 'RTT',       align: 'center', color: '#16A34A' },
                     { label: 'À valider', align: 'center', color: '#B45309' },
                   ].map(h => (
                     <th key={h.label} style={{
@@ -225,14 +227,15 @@ export default function DashboardPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
                           width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-                          background: '#EDE9FE', overflow: 'hidden',
+                          // Avatar fallback bordeaux clair
+                          background: '#F2E6E9', overflow: 'hidden',
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
                           <img src={emp.avatarUrl} alt=""
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }} />
                           <span style={{
-                            fontSize: '12px', fontWeight: 700, color: '#4F46E5',
+                            fontSize: '12px', fontWeight: 700, color: '#6B2F42',
                             display: 'none', width: '100%', height: '100%',
                             alignItems: 'center', justifyContent: 'center'
                           }}>
@@ -250,9 +253,9 @@ export default function DashboardPage() {
                     </td>
 
                     {[
-                      { val: emp.solde?.cp_n1_solde ?? emp.solde?.cp_n1_force, bg: '#EFF6FF', color: '#2563EB' },
-                      { val: emp.solde?.cp_n_solde ?? emp.solde?.cp_n_force, bg: '#EEF2FF', color: '#4F46E5' },
-                      { val: emp.solde?.rtt_solde ?? emp.solde?.rtt_force, bg: '#F0FDF4', color: '#16A34A' },
+                      { val: emp.solde?.cp_n1_solde ?? emp.solde?.cp_n1_force, bg: '#F9EEF1', color: '#8B4A5A' },
+                      { val: emp.solde?.cp_n_solde  ?? emp.solde?.cp_n_force,  bg: '#EFF6FF', color: '#4F7EF7' },
+                      { val: emp.solde?.rtt_solde   ?? emp.solde?.rtt_force,   bg: '#F0FDF4', color: '#16A34A' },
                     ].map(({ val, bg, color }, i) => (
                       <td key={i} style={{ padding: '16px 24px', textAlign: 'center' }}>
                         <span style={{
@@ -294,11 +297,14 @@ export default function DashboardPage() {
       {!isManager && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
           <StatCard label="CP N-1 restants" value={soldes?.cp_n1_solde ?? soldes?.cp_n1_force}
-            acquis={soldes?.cp_n1_acquis} pris={soldes?.cp_n1_pris} accent="#4F7EF7" iconBg="#EEF2FF" />
-          <StatCard label="CP N restants" value={soldes?.cp_n_solde ?? soldes?.cp_n_force}
-            acquis={soldes?.cp_n_acquis} pris={soldes?.cp_n_pris} accent="#6366F1" iconBg="#EEF2FF" />
-          <StatCard label="RTT restants" value={soldes?.rtt_solde ?? soldes?.rtt_force}
-            acquis={soldes?.rtt_acquis} pris={soldes?.rtt_pris} accent="#10B981" iconBg="#F0FDF4" />
+            acquis={soldes?.cp_n1_acquis} pris={soldes?.cp_n1_pris}
+            accent="#8B4A5A" iconBg="#F9EEF1" />
+          <StatCard label="CP N restants"   value={soldes?.cp_n_solde  ?? soldes?.cp_n_force}
+            acquis={soldes?.cp_n_acquis}  pris={soldes?.cp_n_pris}
+            accent="#4F7EF7" iconBg="#EFF6FF" />
+          <StatCard label="RTT restants"    value={soldes?.rtt_solde   ?? soldes?.rtt_force}
+            acquis={soldes?.rtt_acquis}   pris={soldes?.rtt_pris}
+            accent="#16A34A" iconBg="#F0FDF4" />
         </div>
       )}
     </div>
