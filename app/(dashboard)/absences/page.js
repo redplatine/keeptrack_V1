@@ -24,11 +24,25 @@ const joursFeries = [
 
 const ABSENCES_CALENDAIRE = ['Maladie', 'Maternité', 'Paternité']
 const ABSENCES_AUTO_APPROUVEES = ['Maladie', 'Maternité', 'Paternité']
+const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
-const MOIS = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-]
+const TYPE_CONFIG = {
+  'CP':                  { bg: '#EFF6FF', color: '#2563EB' },
+  'RTT':                 { bg: '#EEF2FF', color: '#4F46E5' },
+  'Maladie':             { bg: '#FEF2F2', color: '#DC2626' },
+  'Maternité':           { bg: '#FDF4FF', color: '#A21CAF' },
+  'Paternité':           { bg: '#F0FDF4', color: '#16A34A' },
+  'Congé sans solde':    { bg: '#F0EDE9', color: '#78716C' },
+  'Événement familial':  { bg: '#FFFBEB', color: '#B45309' },
+  'Absence injustifiée': { bg: '#FEF2F2', color: '#991B1B' },
+}
+
+const STATUS_CONFIG = {
+  'En attente': { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B', border: '#FDE68A' },
+  'Approuvée':  { bg: '#F0FDF4', color: '#16A34A', dot: '#4ADE80', border: '#BBF7D0' },
+  'Refusée':    { bg: '#FEF2F2', color: '#DC2626', dot: '#F87171', border: '#FECACA' },
+}
 
 function calculJoursOuvres(debut, fin) {
   let count = 0
@@ -56,12 +70,6 @@ function calculNbJours(typeAbsence, debut, fin, demiJournee) {
   return calculJoursOuvres(debut, fin)
 }
 
-const statusColors = {
-  'En attente': 'bg-orange-50 text-orange-500',
-  'Approuvée': 'bg-green-50 text-green-600',
-  'Refusée': 'bg-red-50 text-red-500',
-}
-
 function genererOptionsMois() {
   const options = []
   const now = new Date()
@@ -75,6 +83,20 @@ function genererOptionsMois() {
   return options
 }
 
+const S = {
+  input: {
+    width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px',
+    padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6',
+    outline: 'none', color: '#1C1917', fontFamily: 'inherit',
+  },
+  select: {
+    border: '1px solid #E8E4E0', borderRadius: '10px',
+    padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6',
+    outline: 'none', color: '#1C1917', fontFamily: 'inherit', cursor: 'pointer',
+  },
+  label: { fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' },
+}
+
 export default function AbsencesPage() {
   const [absences, setAbsences] = useState([])
   const [employes, setEmployes] = useState([])
@@ -82,68 +104,35 @@ export default function AbsencesPage() {
   const [showForm, setShowForm] = useState(false)
   const [currentEmploye, setCurrentEmploye] = useState(null)
   const [alerteForm, setAlerteForm] = useState(null)
-
   const [filtreMois, setFiltreMois] = useState('')
   const [filtreStatut, setFiltreStatut] = useState('')
   const [filtreEmployeId, setFiltreEmployeId] = useState('')
-
   const [form, setForm] = useState({
-    employe_id: '',
-    type_absence: 'CP',
-    date_debut: '',
-    date_fin: '',
-    demi_journee: false,
-    commentaire_salarie: '',
+    employe_id: '', type_absence: 'CP', date_debut: '',
+    date_fin: '', demi_journee: false, commentaire_salarie: '',
   })
 
   const nbJoursCalcule = calculNbJours(form.type_absence, form.date_debut, form.date_fin, form.demi_journee)
   const optionsMois = useMemo(() => genererOptionsMois(), [])
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-
-    const { data: emp } = await supabase
-      .from('employes')
-      .select('*')
-      .eq('email', user.email)
-      .single()
-
+    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
     setCurrentEmploye(emp)
-
-    const { data: allEmployes } = await supabase
-      .from('employes')
-      .select('id, nom, prenom, role')
-      .order('nom')
+    const { data: allEmployes } = await supabase.from('employes').select('id, nom, prenom, role').order('nom')
     setEmployes(allEmployes || [])
-
     let absData = []
     if (emp?.role === 'salarie') {
-      const { data } = await supabase
-        .from('absences')
-        .select('*')
-        .eq('employe_id', emp.id)
-        .order('date_debut', { ascending: false })
+      const { data } = await supabase.from('absences').select('*').eq('employe_id', emp.id).order('date_debut', { ascending: false })
       absData = data || []
     } else {
-      const { data } = await supabase
-        .from('absences')
-        .select('*')
-        .order('date_debut', { ascending: false })
+      const { data } = await supabase.from('absences').select('*').order('date_debut', { ascending: false })
       absData = data || []
     }
-
-    const { data: employesData } = await supabase
-      .from('employes')
-      .select('id, nom, prenom, matricule')
-    absData = absData.map(abs => ({
-      ...abs,
-      employes: employesData?.find(e => e.id === abs.employe_id) || null
-    }))
-
+    const { data: employesData } = await supabase.from('employes').select('id, nom, prenom, matricule')
+    absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
     setAbsences(absData)
     setLoading(false)
   }
@@ -170,178 +159,84 @@ export default function AbsencesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setAlerteForm(null)
-
     const statut = ABSENCES_AUTO_APPROUVEES.includes(form.type_absence) ? 'Approuvée' : 'En attente'
     const employe_id = isManager && form.employe_id ? form.employe_id : currentEmploye?.id
     if (!employe_id) { setAlerteForm('Votre profil employé est introuvable.'); return }
-
     const date_fin_reelle = form.demi_journee ? form.date_debut : form.date_fin
 
-    // Vérification solde suffisant pour CP et RTT
     if (form.type_absence === 'CP' || form.type_absence === 'RTT') {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase
-        .from('soldes_conges')
-        .select('*')
-        .eq('employe_id', employe_id)
-        .eq('annee', annee)
-        .single()
-
+      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', employe_id).eq('annee', annee).single()
       if (solde) {
-        if (form.type_absence === 'RTT') {
-          if (nbJoursCalcule > (solde.rtt_solde || 0)) {
-            setAlerteForm(`Solde RTT insuffisant — Disponible : ${solde.rtt_solde} j, demande : ${nbJoursCalcule} j`)
-            return
-          }
+        if (form.type_absence === 'RTT' && nbJoursCalcule > (solde.rtt_solde || 0)) {
+          setAlerteForm(`Solde RTT insuffisant — Disponible : ${solde.rtt_solde} j, demande : ${nbJoursCalcule} j`); return
         } else if (form.type_absence === 'CP') {
           const totalCp = (solde.cp_n1_solde || 0) + (solde.cp_n_solde || 0)
-          if (nbJoursCalcule > totalCp) {
-            setAlerteForm(`Solde CP insuffisant — Disponible : ${totalCp} j (CP N-1 : ${solde.cp_n1_solde} j + CP N : ${solde.cp_n_solde} j), demande : ${nbJoursCalcule} j`)
-            return
-          }
+          if (nbJoursCalcule > totalCp) { setAlerteForm(`Solde CP insuffisant — Disponible : ${totalCp} j, demande : ${nbJoursCalcule} j`); return }
         }
       }
     }
 
-    // Vérification chevauchement de dates
-    const { data: absExistantes } = await supabase
-      .from('absences')
-      .select('id, date_debut, date_fin, type_absence')
-      .eq('employe_id', employe_id)
-      .neq('statut', 'Refusée')
-
+    const { data: absExistantes } = await supabase.from('absences').select('id, date_debut, date_fin, type_absence').eq('employe_id', employe_id).neq('statut', 'Refusée')
     const chevauchement = absExistantes?.find(abs => {
-      const debutExist = abs.date_debut
       const finExist = abs.date_fin || abs.date_debut
-      return form.date_debut <= finExist && date_fin_reelle >= debutExist
+      return form.date_debut <= finExist && date_fin_reelle >= abs.date_debut
     })
-
-    if (chevauchement) {
-      setAlerteForm(`Chevauchement détecté avec une absence existante (${chevauchement.type_absence} du ${chevauchement.date_debut} au ${chevauchement.date_fin || chevauchement.date_debut})`)
-      return
-    }
+    if (chevauchement) { setAlerteForm(`Chevauchement avec une absence existante (${chevauchement.type_absence} du ${chevauchement.date_debut} au ${chevauchement.date_fin || chevauchement.date_debut})`); return }
 
     const { error } = await supabase.from('absences').insert([{
-      employe_id,
-      type_absence: form.type_absence,
-      date_debut: form.date_debut,
-      date_fin: date_fin_reelle,
-      nb_jours: nbJoursCalcule,
-      statut,
+      employe_id, type_absence: form.type_absence, date_debut: form.date_debut,
+      date_fin: date_fin_reelle, nb_jours: nbJoursCalcule, statut,
       commentaire_salarie: form.commentaire_salarie,
     }])
-
     if (!error) {
-      setShowForm(false)
-      setAlerteForm(null)
+      setShowForm(false); setAlerteForm(null)
       setForm({ employe_id: '', type_absence: 'CP', date_debut: '', date_fin: '', demi_journee: false, commentaire_salarie: '' })
       fetchData()
-    } else {
-      setAlerteForm('Erreur : ' + error.message)
-    }
+    } else { setAlerteForm('Erreur : ' + error.message) }
   }
 
   const handleValidation = async (id, statut) => {
     const abs = absences.find(a => a.id === id)
-
     if (statut === 'Approuvée' && abs) {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase
-        .from('soldes_conges').select('*')
-        .eq('employe_id', abs.employe_id).eq('annee', annee).single()
-
+      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', abs.employe_id).eq('annee', annee).single()
       if (solde) {
         const nbJours = abs.nb_jours
         if (abs.type_absence === 'RTT') {
-          await supabase.from('soldes_conges').update({
-            rtt_solde: Math.max(0, (solde.rtt_solde || 0) - nbJours),
-            rtt_pris: (solde.rtt_pris || 0) + nbJours,
-          }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          await supabase.from('soldes_conges').update({ rtt_solde: Math.max(0, (solde.rtt_solde || 0) - nbJours), rtt_pris: (solde.rtt_pris || 0) + nbJours }).eq('employe_id', abs.employe_id).eq('annee', annee)
         } else if (abs.type_absence === 'CP') {
-          let resteADeduire = nbJours
-          let newCpN1Solde = solde.cp_n1_solde || 0
-          let newCpNSolde = solde.cp_n_solde || 0
-          let newCpN1Pris = solde.cp_n1_pris || 0
-          let newCpNPris = solde.cp_n_pris || 0
-          if (newCpN1Solde >= resteADeduire) {
-            newCpN1Solde -= resteADeduire; newCpN1Pris += resteADeduire; resteADeduire = 0
-          } else {
-            resteADeduire -= newCpN1Solde; newCpN1Pris += newCpN1Solde; newCpN1Solde = 0
-            newCpNSolde = Math.max(0, newCpNSolde - resteADeduire); newCpNPris += resteADeduire
-          }
-          await supabase.from('soldes_conges').update({
-            cp_n1_solde: newCpN1Solde, cp_n1_pris: newCpN1Pris,
-            cp_n_solde: newCpNSolde, cp_n_pris: newCpNPris,
-          }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          let r = nbJours, n1s = solde.cp_n1_solde || 0, ns = solde.cp_n_solde || 0, n1p = solde.cp_n1_pris || 0, np = solde.cp_n_pris || 0
+          if (n1s >= r) { n1s -= r; n1p += r; r = 0 } else { r -= n1s; n1p += n1s; n1s = 0; ns = Math.max(0, ns - r); np += r }
+          await supabase.from('soldes_conges').update({ cp_n1_solde: n1s, cp_n1_pris: n1p, cp_n_solde: ns, cp_n_pris: np }).eq('employe_id', abs.employe_id).eq('annee', annee)
         }
       }
     }
-
     await supabase.from('absences').update({ statut }).eq('id', id)
-
-    // Envoi notification email
     if (abs) {
-      const { data: empData } = await supabase
-        .from('employes')
-        .select('email, prenom')
-        .eq('id', abs.employe_id)
-        .single()
-
+      const { data: empData } = await supabase.from('employes').select('email, prenom').eq('id', abs.employe_id).single()
       if (empData?.email) {
-        await fetch('/api/notify-absence', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            emailSalarie: empData.email,
-            prenomSalarie: empData.prenom,
-            typeAbsence: abs.type_absence,
-            dateDebut: abs.date_debut,
-            dateFin: abs.date_fin || abs.date_debut,
-            nbJours: abs.nb_jours,
-            statut,
-          }),
-        })
+        await fetch('/api/notify-absence', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emailSalarie: empData.email, prenomSalarie: empData.prenom, typeAbsence: abs.type_absence, dateDebut: abs.date_debut, dateFin: abs.date_fin || abs.date_debut, nbJours: abs.nb_jours, statut }) })
       }
     }
-
     fetchData()
   }
 
   const handleSupprimer = async (abs) => {
-    const confirmation = window.confirm(
-      `Voulez-vous vraiment supprimer cette absence de ${abs.nb_jours}j (${abs.type_absence}) ? Cette action est irréversible.`
-    )
-    if (!confirmation) return
-
+    if (!window.confirm(`Supprimer cette absence de ${abs.nb_jours}j (${abs.type_absence}) ?`)) return
     if (abs.statut === 'Approuvée') {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase
-        .from('soldes_conges').select('*')
-        .eq('employe_id', abs.employe_id).eq('annee', annee).single()
-
+      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', abs.employe_id).eq('annee', annee).single()
       if (solde) {
         const nbJours = abs.nb_jours
         if (abs.type_absence === 'RTT') {
-          await supabase.from('soldes_conges').update({
-            rtt_solde: (solde.rtt_solde || 0) + nbJours,
-            rtt_pris: Math.max(0, (solde.rtt_pris || 0) - nbJours),
-          }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          await supabase.from('soldes_conges').update({ rtt_solde: (solde.rtt_solde || 0) + nbJours, rtt_pris: Math.max(0, (solde.rtt_pris || 0) - nbJours) }).eq('employe_id', abs.employe_id).eq('annee', annee)
         } else if (abs.type_absence === 'CP') {
-          let resteARecréditer = nbJours
-          let newCpNSolde = solde.cp_n_solde || 0
-          let newCpN1Solde = solde.cp_n1_solde || 0
-          let newCpNPris = solde.cp_n_pris || 0
-          let newCpN1Pris = solde.cp_n1_pris || 0
-          const cpNPrisDisponible = Math.min(newCpNPris, resteARecréditer)
-          newCpNSolde += cpNPrisDisponible; newCpNPris -= cpNPrisDisponible; resteARecréditer -= cpNPrisDisponible
-          if (resteARecréditer > 0) {
-            newCpN1Solde += resteARecréditer
-            newCpN1Pris = Math.max(0, newCpN1Pris - resteARecréditer)
-          }
-          await supabase.from('soldes_conges').update({
-            cp_n_solde: newCpNSolde, cp_n_pris: newCpNPris,
-            cp_n1_solde: newCpN1Solde, cp_n1_pris: newCpN1Pris,
-          }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          let r = nbJours, ns = solde.cp_n_solde || 0, n1s = solde.cp_n1_solde || 0, np = solde.cp_n_pris || 0, n1p = solde.cp_n1_pris || 0
+          const d = Math.min(np, r); ns += d; np -= d; r -= d
+          if (r > 0) { n1s += r; n1p = Math.max(0, n1p - r) }
+          await supabase.from('soldes_conges').update({ cp_n_solde: ns, cp_n_pris: np, cp_n1_solde: n1s, cp_n1_pris: n1p }).eq('employe_id', abs.employe_id).eq('annee', annee)
         }
       }
     }
@@ -360,64 +255,72 @@ export default function AbsencesPage() {
       'Statut': abs.statut,
       'Commentaire': abs.commentaire_salarie || '',
     }))
-
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Absences')
-    ws['!cols'] = [
-      { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 15 },
-      { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 30 }
-    ]
-    const suffixe = filtreMois
-      ? `_${optionsMois.find(o => o.value === filtreMois)?.label.replace(' ', '_')}`
-      : `_${new Date().toISOString().split('T')[0]}`
+    ws['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 30 }]
+    const suffixe = filtreMois ? `_${optionsMois.find(o => o.value === filtreMois)?.label.replace(' ', '_')}` : `_${new Date().toISOString().split('T')[0]}`
     XLSX.writeFile(wb, `absences${suffixe}.xlsx`)
   }
 
   const nbFiltresActifs = [filtreMois, filtreStatut, filtreEmployeId].filter(Boolean).length
 
   return (
-    <div className="p-8">
+    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
 
-      <div className="flex justify-between items-center mb-6">
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Absences</h1>
-          <p className="text-gray-500">
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Absences</h1>
+          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
             {absencesFiltrees.length} demande(s)
-            {nbFiltresActifs > 0 && <span className="text-blue-500 ml-1">(filtrées)</span>}
+            {nbFiltresActifs > 0 && <span style={{ color: '#4F7EF7', marginLeft: '6px' }}>· {nbFiltresActifs} filtre(s) actif(s)</span>}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div style={{ display: 'flex', gap: '10px' }}>
           {isManager && (
-            <button onClick={handleExportExcel}
-              className="bg-green-600 text-white px-5 py-2 rounded-xl font-medium hover:bg-green-700 transition">
-              📊 Exporter Excel
+            <button onClick={handleExportExcel} style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '9px 16px', borderRadius: '10px', border: '1px solid #E8E4E0',
+              background: 'white', color: '#44403C', fontSize: '13.5px', fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exporter Excel
             </button>
           )}
-          <button onClick={() => { setShowForm(!showForm); setAlerteForm(null) }}
-            className="bg-blue-600 text-white px-5 py-2 rounded-xl font-medium hover:bg-blue-700 transition">
-            + Nouvelle demande
+          <button onClick={() => { setShowForm(!showForm); setAlerteForm(null) }} style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            padding: '9px 16px', borderRadius: '10px', border: 'none',
+            background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
+            onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouvelle demande
           </button>
         </div>
       </div>
 
       {/* FILTRES */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-3 items-end">
+      <div style={{
+        background: 'white', borderRadius: '14px', padding: '18px 22px',
+        border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-end' }}>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Mois</label>
-            <select value={filtreMois} onChange={e => setFiltreMois(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style={S.label}>Mois</label>
+            <select value={filtreMois} onChange={e => setFiltreMois(e.target.value)} style={S.select}>
               <option value="">Tous les mois</option>
-              {optionsMois.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
+              {optionsMois.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Statut</label>
-            <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style={S.label}>Statut</label>
+            <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)} style={S.select}>
               <option value="">Tous les statuts</option>
               <option value="En attente">En attente</option>
               <option value="Approuvée">Approuvée</option>
@@ -426,21 +329,23 @@ export default function AbsencesPage() {
           </div>
           {isManager && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Employé</label>
-              <select value={filtreEmployeId} onChange={e => setFiltreEmployeId(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <label style={S.label}>Employé</label>
+              <select value={filtreEmployeId} onChange={e => setFiltreEmployeId(e.target.value)} style={S.select}>
                 <option value="">Tous les employés</option>
-                {employes.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>
-                ))}
+                {employes.map(emp => <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>)}
               </select>
             </div>
           )}
           {nbFiltresActifs > 0 && (
-            <button
-              onClick={() => { setFiltreMois(''); setFiltreStatut(''); setFiltreEmployeId('') }}
-              className="bg-gray-100 text-gray-500 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition">
-              ✕ Réinitialiser
+            <button onClick={() => { setFiltreMois(''); setFiltreStatut(''); setFiltreEmployeId('') }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '9px 14px', borderRadius: '10px', border: '1px solid #E8E4E0',
+                background: '#FAF8F6', color: '#78716C', fontSize: '13px',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Réinitialiser
             </button>
           )}
         </div>
@@ -448,161 +353,246 @@ export default function AbsencesPage() {
 
       {/* FORMULAIRE */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-800 mb-6">Nouvelle demande d'absence</h2>
+        <div style={{
+          background: 'white', borderRadius: '14px', padding: '24px 28px',
+          border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px'
+        }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 20px' }}>Nouvelle demande d'absence</h2>
 
           {alerteForm && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
-              ⚠️ {alerteForm}
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: '10px',
+              background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
+              padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {alerteForm}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
-            {isManager && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employé concerné</label>
-                <select required value={form.employe_id} onChange={e => setForm({...form, employe_id: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">-- Sélectionner un employé --</option>
-                  {employes.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>
-                  ))}
+              {isManager && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={S.label}>Employé concerné</label>
+                  <select required value={form.employe_id} onChange={e => setForm({...form, employe_id: e.target.value})} style={{ ...S.input, cursor: 'pointer' }}>
+                    <option value="">-- Sélectionner un employé --</option>
+                    {employes.map(emp => <option key={emp.id} value={emp.id}>{emp.prenom} {emp.nom}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label style={S.label}>Type d'absence</label>
+                <select value={form.type_absence} onChange={e => setForm({...form, type_absence: e.target.value, demi_journee: false})} style={{ ...S.input, cursor: 'pointer' }}>
+                  {typesDisponibles.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type d'absence</label>
-              <select value={form.type_absence} onChange={e => setForm({...form, type_absence: e.target.value, demi_journee: false})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {typesDisponibles.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '22px' }}>
+                <input type="checkbox" id="demi_journee" checked={form.demi_journee}
+                  onChange={e => setForm({...form, demi_journee: e.target.checked, date_fin: ''})}
+                  style={{ width: '16px', height: '16px', accentColor: '#4F7EF7', cursor: 'pointer' }} />
+                <label htmlFor="demi_journee" style={{ fontSize: '13.5px', color: '#44403C', cursor: 'pointer', fontWeight: 500 }}>Demi-journée</label>
+              </div>
 
-            <div className="flex items-center gap-3 mt-6">
-              <input type="checkbox" id="demi_journee" checked={form.demi_journee}
-                onChange={e => setForm({...form, demi_journee: e.target.checked, date_fin: ''})}
-                className="w-4 h-4 accent-blue-600" />
-              <label htmlFor="demi_journee" className="text-sm font-medium text-gray-700">Demi-journée</label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {form.demi_journee ? 'Date' : 'Date de début'}
-              </label>
-              <input required type="date" value={form.date_debut} onChange={e => setForm({...form, date_debut: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-
-            {!form.demi_journee && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
-                <input required type="date" value={form.date_fin} min={form.date_debut}
-                  onChange={e => setForm({...form, date_fin: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label style={S.label}>{form.demi_journee ? 'Date' : 'Date de début'}</label>
+                <input required type="date" value={form.date_debut} onChange={e => setForm({...form, date_debut: e.target.value})} style={S.input} />
               </div>
-            )}
 
-            {(form.date_debut && (form.date_fin || form.demi_journee)) && (
-              <div className="col-span-2 bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
-                <span className="text-blue-600 font-bold text-xl">{nbJoursCalcule}</span>
-                <span className="text-blue-700 text-sm">
-                  jour(s) {form.demi_journee ? '' : ABSENCES_CALENDAIRE.includes(form.type_absence) ? 'calendaires' : 'ouvrés'}
-                  {ABSENCES_AUTO_APPROUVEES.includes(form.type_absence) && (
-                    <span className="ml-2 bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">Approuvée automatiquement</span>
-                  )}
-                </span>
+              {!form.demi_journee && (
+                <div>
+                  <label style={S.label}>Date de fin</label>
+                  <input required type="date" value={form.date_fin} min={form.date_debut} onChange={e => setForm({...form, date_fin: e.target.value})} style={S.input} />
+                </div>
+              )}
+
+              {(form.date_debut && (form.date_fin || form.demi_journee)) && (
+                <div style={{
+                  gridColumn: '1 / -1', background: '#F0EDE9', borderRadius: '12px',
+                  padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px',
+                  border: '1px solid #E8E4E0'
+                }}>
+                  <div style={{
+                    width: '44px', height: '44px', borderRadius: '12px', background: '#1C1917',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '18px', fontWeight: 700, color: 'white', flexShrink: 0
+                  }}>
+                    {nbJoursCalcule}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#1C1917', margin: 0 }}>
+                      {nbJoursCalcule} jour(s) {form.demi_journee ? '' : ABSENCES_CALENDAIRE.includes(form.type_absence) ? 'calendaires' : 'ouvrés'}
+                    </p>
+                    {ABSENCES_AUTO_APPROUVEES.includes(form.type_absence) && (
+                      <span style={{ fontSize: '12px', background: '#F0FDF4', color: '#16A34A', padding: '2px 8px', borderRadius: '20px', fontWeight: 500 }}>
+                        ✓ Approuvée automatiquement
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={S.label}>Commentaire (optionnel)</label>
+                <textarea value={form.commentaire_salarie} onChange={e => setForm({...form, commentaire_salarie: e.target.value})}
+                  rows={2} placeholder="Précisez si nécessaire…"
+                  style={{ ...S.input, resize: 'none', lineHeight: 1.5 }} />
               </div>
-            )}
 
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Commentaire (optionnel)</label>
-              <textarea value={form.commentaire_salarie} onChange={e => setForm({...form, commentaire_salarie: e.target.value})}
-                rows={2} placeholder="Précisez si nécessaire..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px' }}>
+                <button type="submit" style={{
+                  padding: '10px 20px', borderRadius: '10px', border: 'none',
+                  background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  Envoyer la demande
+                </button>
+                <button type="button" onClick={() => { setShowForm(false); setAlerteForm(null) }} style={{
+                  padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
+                  background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  Annuler
+                </button>
+              </div>
             </div>
-
-            <div className="col-span-2 flex gap-3">
-              <button type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-blue-700 transition">
-                Envoyer la demande
-              </button>
-              <button type="button" onClick={() => { setShowForm(false); setAlerteForm(null) }}
-                className="bg-gray-100 text-gray-600 px-6 py-2 rounded-xl font-medium hover:bg-gray-200 transition">
-                Annuler
-              </button>
-            </div>
-
           </form>
         </div>
       )}
 
       {/* TABLEAU */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div style={{
+        background: 'white', borderRadius: '14px', border: '1px solid #E8E4E0',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflow: 'hidden'
+      }}>
         {loading ? (
-          <div className="p-8 text-center text-gray-400">Chargement...</div>
+          <div style={{ padding: '60px', textAlign: 'center', color: '#A8A29E' }}>Chargement…</div>
         ) : absencesFiltrees.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">Aucune absence pour cette période.</div>
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>📭</div>
+            <p style={{ color: '#A8A29E', fontSize: '14px' }}>Aucune absence pour cette période</p>
+          </div>
         ) : (
-          <table className="w-full">
-            <thead className="border-b border-gray-100">
-              <tr>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Employé</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Type</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Période</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Jours</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Statut</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500">Actions</th>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#FAF8F6' }}>
+                {['Employé', 'Type', 'Période', 'Jours', 'Statut', 'Actions'].map(h => (
+                  <th key={h} style={{
+                    padding: '12px 24px', textAlign: 'left',
+                    fontSize: '11px', fontWeight: 600, color: '#A8A29E',
+                    textTransform: 'uppercase', letterSpacing: '0.07em',
+                    borderBottom: '1px solid #F0EDE9'
+                  }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {absencesFiltrees.map((abs) => (
-                <tr key={abs.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 font-medium text-gray-800">
-                    {abs.employes?.prenom} {abs.employes?.nom}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{abs.type_absence}</td>
-                  <td className="px-6 py-4 text-gray-600 text-sm">
-                    {abs.nb_jours === 0.5 ? (
-                      <span>{abs.date_debut} <span className="text-blue-500">(½ journée)</span></span>
-                    ) : (
-                      <span>{abs.date_debut} → {abs.date_fin}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 font-medium text-gray-800">{abs.nb_jours}j</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusColors[abs.statut]}`}>
-                      {abs.statut}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      {isManager && abs.statut === 'En attente' && (
-                        <>
-                          <button onClick={() => handleValidation(abs.id, 'Approuvée')}
-                            className="bg-green-50 text-green-600 text-xs px-3 py-1 rounded-lg hover:bg-green-100 transition font-medium">
-                            ✓ Approuver
-                          </button>
-                          <button onClick={() => handleValidation(abs.id, 'Refusée')}
-                            className="bg-red-50 text-red-500 text-xs px-3 py-1 rounded-lg hover:bg-red-100 transition font-medium">
-                            ✗ Refuser
-                          </button>
-                        </>
+              {absencesFiltrees.map(abs => {
+                const tc = TYPE_CONFIG[abs.type_absence] || { bg: '#F0EDE9', color: '#78716C' }
+                const sc = STATUS_CONFIG[abs.statut] || STATUS_CONFIG['En attente']
+                return (
+                  <tr key={abs.id} style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+
+                    <td style={{ padding: '15px 24px', fontSize: '14px', fontWeight: 500, color: '#1C1917' }}>
+                      {abs.employes?.prenom} {abs.employes?.nom}
+                    </td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: tc.bg, color: tc.color }}>
+                        {abs.type_absence}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>
+                      {abs.nb_jours === 0.5 ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {abs.date_debut}
+                          <span style={{ fontSize: '11px', background: '#F0EDE9', color: '#78716C', padding: '2px 6px', borderRadius: '4px' }}>½ j</span>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {abs.date_debut}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C4B5A5" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                          {abs.date_fin}
+                        </span>
                       )}
-                      <button onClick={() => handleSupprimer(abs)}
-                        className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-lg hover:bg-gray-200 transition font-medium">
-                        🗑️ Supprimer
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        minWidth: '44px', height: '28px', borderRadius: '8px', padding: '0 10px',
+                        fontSize: '13px', fontWeight: 700, background: '#F0EDE9', color: '#44403C'
+                      }}>
+                        {abs.nb_jours}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        fontSize: '12px', fontWeight: 600, padding: '4px 10px',
+                        borderRadius: '20px', background: sc.bg, color: sc.color,
+                        border: `1px solid ${sc.border}`
+                      }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
+                        {abs.statut}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '15px 24px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {isManager && abs.statut === 'En attente' && (
+                          <>
+                            <button onClick={() => handleValidation(abs.id, 'Approuvée')} style={{
+                              display: 'flex', alignItems: 'center', gap: '5px',
+                              padding: '5px 12px', borderRadius: '8px', border: '1px solid #BBF7D0',
+                              background: '#F0FDF4', color: '#16A34A', fontSize: '12px', fontWeight: 600,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#DCFCE7'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#F0FDF4'}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                              Approuver
+                            </button>
+                            <button onClick={() => handleValidation(abs.id, 'Refusée')} style={{
+                              display: 'flex', alignItems: 'center', gap: '5px',
+                              padding: '5px 12px', borderRadius: '8px', border: '1px solid #FECACA',
+                              background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              Refuser
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => handleSupprimer(abs)} style={{
+                          display: 'flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 12px', borderRadius: '8px', border: '1px solid #E8E4E0',
+                          background: '#FAF8F6', color: '#A8A29E', fontSize: '12px', fontWeight: 600,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FECACA' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#FAF8F6'; e.currentTarget.style.color = '#A8A29E'; e.currentTarget.style.borderColor = '#E8E4E0' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
       </div>
-
     </div>
   )
 }
