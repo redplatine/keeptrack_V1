@@ -87,6 +87,51 @@ export default function EmployesPage() {
     setInvitationLoading(false)
   }
 
+  const recalculerRTT = async (employeId, nouveauRttAnnuel) => {
+    const annee = new Date().getFullYear()
+    const { data: solde } = await supabase
+      .from('soldes_conges')
+      .select('*')
+      .eq('employe_id', employeId)
+      .eq('annee', annee)
+      .single()
+
+    if (!solde) return
+
+    const { data: emp } = await supabase
+      .from('employes')
+      .select('date_entree')
+      .eq('id', employeId)
+      .single()
+
+    if (!emp?.date_entree) return
+
+    const aujourd_hui = new Date()
+    const dateEntree = new Date(emp.date_entree)
+    const dateEntreeMois = new Date(dateEntree.getFullYear(), dateEntree.getMonth(), 1)
+    const moisEnCours = new Date(aujourd_hui.getFullYear(), aujourd_hui.getMonth(), 1)
+
+    let rttAcquis = 0
+    if (nouveauRttAnnuel > 0 && dateEntreeMois <= moisEnCours) {
+      const moisAnciennete = Math.min(
+        (aujourd_hui.getFullYear() - dateEntree.getFullYear()) * 12
+        + aujourd_hui.getMonth() - dateEntree.getMonth() + 1,
+        1
+      )
+      rttAcquis = Math.round(moisAnciennete * (nouveauRttAnnuel / 12) * 100) / 100
+    }
+
+    // Ajouter le force RTT existant
+    const rttForce = solde.rtt_force || 0
+    const rttAcquisTotal = rttAcquis + rttForce
+
+    await supabase.from('soldes_conges').update({
+      rtt_acquis: rttAcquisTotal,
+      rtt_solde: Math.max(0, rttAcquisTotal - (solde.rtt_pris || 0)),
+      // CP et recup intouchés
+    }).eq('employe_id', employeId).eq('annee', annee)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const formNettoye = {
@@ -102,15 +147,25 @@ export default function EmployesPage() {
     if (employeSelectionne) {
       const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
       if (error) { alert('Erreur modification : ' + error.message); return }
-      if (form.date_entree !== employeSelectionne.date_entree || parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)) {
+
+      const dateEntreeChangee = form.date_entree !== employeSelectionne.date_entree
+      const rttAnnuelChange = parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)
+
+      if (dateEntreeChangee) {
+        // Date d'entrée changée → recalcul global (CP + RTT)
+        // La fonction SQL préserve les _force grâce au fix du ON CONFLICT
         await supabase.rpc('calculer_acquisitions')
+      } else if (rttAnnuelChange) {
+        // Seulement RTT annuel changé → recalcul RTT ciblé, CP intouchés
+        await recalculerRTT(employeSelectionne.id, parseFloat(form.rtt_annuel) || 0)
       }
+
     } else {
-      const { error } = await supabase.from('employes').insert([formNettoye]).select().single()
+      const { data: newEmp, error } = await supabase.from('employes').insert([formNettoye]).select().single()
       if (error) { alert('Erreur création : ' + error.message); return }
       await supabase.rpc('calculer_acquisitions')
+
       // Reprise des compteurs à la création
-      const { data: newEmp } = await supabase.from('employes').select('id').eq('email', formNettoye.email).single()
       const cp_n1 = parseFloat(form.cp_n1_reprise) || 0
       const cp_n  = parseFloat(form.cp_n_reprise)  || 0
       const rtt   = parseFloat(form.rtt_reprise)   || 0
@@ -256,7 +311,6 @@ export default function EmployesPage() {
               <div><label style={S.label}>RTT annuel</label><input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" /></div>
               <div><label style={S.label}>Salaire brut annuel (€)</label><input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" /></div>
 
-              {/* NOTE : les compteurs se gèrent désormais dans l'onglet "Compteurs" */}
               {!employeSelectionne && (
                 <>
                   <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Reprise des compteurs (optionnel)</div>
