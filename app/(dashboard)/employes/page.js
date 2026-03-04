@@ -13,15 +13,9 @@ function Avatar({ id, prenom, nom, size = 36 }) {
   const url = getAvatarUrl(id)
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '10px', flexShrink: 0,
-      background: '#F2E6E9', overflow: 'hidden',
-      display: 'flex', alignItems: 'center', justifyContent: 'center'
-    }}>
+    <div style={{ width: size, height: size, borderRadius: '10px', flexShrink: 0, background: '#F2E6E9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {!error ? (
-        <img src={`${url}?t=${id}`} alt={`${prenom} ${nom}`}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={() => setError(true)} />
+        <img src={`${url}?t=${id}`} alt={`${prenom} ${nom}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setError(true)} />
       ) : (
         <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
       )}
@@ -53,6 +47,14 @@ const S = {
   },
 }
 
+const FORM_DEFAULT = {
+  matricule: '', nom: '', prenom: '', email: '', poste: '',
+  departement: '', type_contrat: 'CDI', statut: 'Non-cadre',
+  temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
+  numero_voie: '', nom_rue: '', code_postal: '', ville: '',
+  date_naissance: '', rtt_annuel: 0,
+}
+
 export default function EmployesPage() {
   const [employes, setEmployes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,14 +62,7 @@ export default function EmployesPage() {
   const [employeSelectionne, setEmployeSelectionne] = useState(null)
   const [invitationEnvoyee, setInvitationEnvoyee] = useState(false)
   const [invitationLoading, setInvitationLoading] = useState(false)
-  const [form, setForm] = useState({
-    matricule: '', nom: '', prenom: '', email: '', poste: '',
-    departement: '', type_contrat: 'CDI', statut: 'Non-cadre',
-    temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
-    numero_voie: '', nom_rue: '', code_postal: '', ville: '',
-    date_naissance: '', rtt_annuel: 0,
-    cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
-  })
+  const [form, setForm] = useState(FORM_DEFAULT)
 
   useEffect(() => { fetchEmployes() }, [])
 
@@ -77,14 +72,7 @@ export default function EmployesPage() {
     setLoading(false)
   }
 
-  const resetForm = () => setForm({
-    matricule: '', nom: '', prenom: '', email: '', poste: '',
-    departement: '', type_contrat: 'CDI', statut: 'Non-cadre',
-    temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
-    numero_voie: '', nom_rue: '', code_postal: '', ville: '',
-    date_naissance: '', rtt_annuel: 0,
-    cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
-  })
+  const resetForm = () => setForm(FORM_DEFAULT)
 
   const handleEnvoyerInvitation = async () => {
     if (!form.email) return
@@ -110,10 +98,6 @@ export default function EmployesPage() {
       code_postal: form.code_postal || null, ville: form.ville || null,
       date_naissance: form.date_naissance || null, rtt_annuel: form.rtt_annuel || 0,
     }
-    const cp_n1 = parseFloat(form.cp_n1_force) || 0
-    const cp_n = parseFloat(form.cp_n_force) || 0
-    const rtt = parseFloat(form.rtt_force) || 0
-    const annee = new Date().getFullYear()
 
     if (employeSelectionne) {
       const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
@@ -121,32 +105,38 @@ export default function EmployesPage() {
       if (form.date_entree !== employeSelectionne.date_entree || parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)) {
         await supabase.rpc('calculer_acquisitions')
       }
-      if (cp_n1 > 0 || cp_n > 0 || rtt > 0) {
-        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', employeSelectionne.id).eq('annee', annee).single()
+    } else {
+      const { error } = await supabase.from('employes').insert([formNettoye]).select().single()
+      if (error) { alert('Erreur création : ' + error.message); return }
+      await supabase.rpc('calculer_acquisitions')
+      // Reprise des compteurs à la création
+      const { data: newEmp } = await supabase.from('employes').select('id').eq('email', formNettoye.email).single()
+      const cp_n1 = parseFloat(form.cp_n1_reprise) || 0
+      const cp_n  = parseFloat(form.cp_n_reprise)  || 0
+      const rtt   = parseFloat(form.rtt_reprise)   || 0
+      const recup = parseFloat(form.recup_reprise)  || 0
+      if (cp_n1 > 0 || cp_n > 0 || rtt > 0 || recup > 0) {
+        const annee = new Date().getFullYear()
+        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', newEmp.id).eq('annee', annee).single()
         if (ex) {
           await supabase.from('soldes_conges').update({
             cp_n1_acquis: (ex.cp_n1_acquis || 0) + cp_n1, cp_n1_solde: (ex.cp_n1_solde || 0) + cp_n1,
-            cp_n_acquis: (ex.cp_n_acquis || 0) + cp_n, cp_n_solde: (ex.cp_n_solde || 0) + cp_n,
-            rtt_acquis: (ex.rtt_acquis || 0) + rtt, rtt_solde: (ex.rtt_solde || 0) + rtt,
-            cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt,
-          }).eq('employe_id', employeSelectionne.id).eq('annee', annee)
+            cp_n_acquis:  (ex.cp_n_acquis  || 0) + cp_n,  cp_n_solde:  (ex.cp_n_solde  || 0) + cp_n,
+            rtt_acquis:   (ex.rtt_acquis   || 0) + rtt,   rtt_solde:   (ex.rtt_solde   || 0) + rtt,
+            recup_acquis: (ex.recup_acquis || 0) + recup, recup_solde: (ex.recup_solde || 0) + recup,
+          }).eq('employe_id', newEmp.id).eq('annee', annee)
         } else {
-          await supabase.from('soldes_conges').insert({ employe_id: employeSelectionne.id, annee, cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1, cp_n_acquis: cp_n, cp_n_solde: cp_n, rtt_acquis: rtt, rtt_solde: rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt })
-        }
-      }
-    } else {
-      const { data: newEmp, error } = await supabase.from('employes').insert([formNettoye]).select().single()
-      if (error) { alert('Erreur création : ' + error.message); return }
-      await supabase.rpc('calculer_acquisitions')
-      if (cp_n1 > 0 || cp_n > 0 || rtt > 0) {
-        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', newEmp.id).eq('annee', annee).single()
-        if (ex) {
-          await supabase.from('soldes_conges').update({ cp_n1_acquis: (ex.cp_n1_acquis || 0) + cp_n1, cp_n1_solde: (ex.cp_n1_solde || 0) + cp_n1, cp_n_acquis: (ex.cp_n_acquis || 0) + cp_n, cp_n_solde: (ex.cp_n_solde || 0) + cp_n, rtt_acquis: (ex.rtt_acquis || 0) + rtt, rtt_solde: (ex.rtt_solde || 0) + rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt }).eq('employe_id', newEmp.id).eq('annee', annee)
-        } else {
-          await supabase.from('soldes_conges').insert({ employe_id: newEmp.id, annee, cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1, cp_n_acquis: cp_n, cp_n_solde: cp_n, rtt_acquis: rtt, rtt_solde: rtt, cp_n1_force: cp_n1, cp_n_force: cp_n, rtt_force: rtt })
+          await supabase.from('soldes_conges').insert({
+            employe_id: newEmp.id, annee,
+            cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1,
+            cp_n_acquis: cp_n,   cp_n_solde: cp_n,
+            rtt_acquis: rtt,     rtt_solde: rtt,
+            recup_acquis: recup, recup_solde: recup,
+          })
         }
       }
     }
+
     setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); fetchEmployes()
   }
 
@@ -160,7 +150,6 @@ export default function EmployesPage() {
       salaire_brut: emp.salaire_brut || '', numero_voie: emp.numero_voie || '',
       nom_rue: emp.nom_rue || '', code_postal: emp.code_postal || '', ville: emp.ville || '',
       date_naissance: emp.date_naissance || '', rtt_annuel: emp.rtt_annuel || 0,
-      cp_n1_force: 0, cp_n_force: 0, rtt_force: 0,
     })
     setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -182,18 +171,13 @@ export default function EmployesPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* ACTIONS — sans titre */}
+      {/* ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
           {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
         </p>
         <button onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            padding: '9px 16px', borderRadius: '10px', border: 'none',
-            background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
           onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
           onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -205,10 +189,7 @@ export default function EmployesPage() {
 
       {/* FORMULAIRE */}
       {showForm && (
-        <div style={{
-          background: 'white', borderRadius: '16px', padding: '28px 32px',
-          border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '24px'
-        }}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '28px 32px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {employeSelectionne && <Avatar id={employeSelectionne.id} prenom={employeSelectionne.prenom} nom={employeSelectionne.nom} size={40} />}
@@ -236,6 +217,7 @@ export default function EmployesPage() {
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
               <div style={S.sectionTitle}>Informations personnelles</div>
               <div><label style={S.label}>Matricule</label><input {...F('matricule')} placeholder="Ex: MAT001" /></div>
               <div><label style={S.label}>Nom *</label><input required {...F('nom')} /></div>
@@ -274,59 +256,51 @@ export default function EmployesPage() {
               <div><label style={S.label}>RTT annuel</label><input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" /></div>
               <div><label style={S.label}>Salaire brut annuel (€)</label><input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" /></div>
 
-              <div style={{ ...S.sectionTitle, marginTop: '8px' }}>
-                {employeSelectionne ? 'Modifier les compteurs' : 'Reprise des compteurs (optionnel)'}
-              </div>
-              <div style={{ gridColumn: '1 / -1', marginTop: '-8px', marginBottom: '8px' }}>
-                <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>
-                  {employeSelectionne
-                    ? 'Les valeurs saisies seront additionnées aux compteurs existants'
-                    : 'À remplir uniquement pour les salariés ayant déjà des compteurs existants'}
-                </p>
-              </div>
-              <div>
-                <label style={S.label}>CP N-1 à ajouter (j)</label>
-                <input type="number" step="0.5" value={form.cp_n1_force}
-                  onChange={e => setForm({ ...form, cp_n1_force: parseFloat(e.target.value) || 0 })} style={S.input} />
-              </div>
-              <div>
-                <label style={S.label}>CP N à ajouter (j)</label>
-                <input type="number" step="0.5" value={form.cp_n_force}
-                  onChange={e => setForm({ ...form, cp_n_force: parseFloat(e.target.value) || 0 })} style={S.input} />
-              </div>
-              <div>
-                <label style={S.label}>RTT à ajouter (j)</label>
-                <input type="number" step="0.5" value={form.rtt_force}
-                  onChange={e => setForm({ ...form, rtt_force: parseFloat(e.target.value) || 0 })} style={S.input} />
-              </div>
+              {/* NOTE : les compteurs se gèrent désormais dans l'onglet "Compteurs" */}
+              {!employeSelectionne && (
+                <>
+                  <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Reprise des compteurs (optionnel)</div>
+                  <div style={{ gridColumn: '1 / -1', marginTop: '-8px', marginBottom: '8px' }}>
+                    <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>
+                      Pour les salariés ayant déjà des compteurs à reprendre. Les ajustements ultérieurs se font via l'onglet <strong>Compteurs</strong>.
+                    </p>
+                  </div>
+                  <div>
+                    <label style={S.label}>CP N-1 (j)</label>
+                    <input type="number" step="0.5" value={form.cp_n1_reprise || 0}
+                      onChange={e => setForm({ ...form, cp_n1_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
+                  </div>
+                  <div>
+                    <label style={S.label}>CP N (j)</label>
+                    <input type="number" step="0.5" value={form.cp_n_reprise || 0}
+                      onChange={e => setForm({ ...form, cp_n_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
+                  </div>
+                  <div>
+                    <label style={S.label}>RTT (j)</label>
+                    <input type="number" step="0.5" value={form.rtt_reprise || 0}
+                      onChange={e => setForm({ ...form, rtt_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
+                  </div>
+                  <div>
+                    <label style={S.label}>Récupération (j)</label>
+                    <input type="number" step="0.5" value={form.recup_reprise || 0}
+                      onChange={e => setForm({ ...form, recup_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
+                  </div>
+                </>
+              )}
 
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #F0EDE9' }}>
-                <button type="submit" style={{
-                  padding: '10px 20px', borderRadius: '10px', border: 'none',
-                  background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                <button type="submit" style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
                   onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
                   {employeSelectionne ? 'Enregistrer les modifications' : 'Enregistrer'}
                 </button>
-                <button type="button"
-                  onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }}
-                  style={{
-                    padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
-                    background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
+                <button type="button" onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }}
+                  style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
                 {employeSelectionne && (
                   <button type="button" onClick={handleSupprimer}
-                    style={{
-                      marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '10px 20px', borderRadius: '10px', border: '1px solid #FECACA',
-                      background: '#FEF2F2', color: '#DC2626', fontSize: '13.5px', fontWeight: 500,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}
+                    style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
                     onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -342,10 +316,7 @@ export default function EmployesPage() {
       )}
 
       {/* TABLEAU */}
-      <div style={{
-        background: 'white', borderRadius: '16px',
-        border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
-      }}>
+      <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
@@ -360,12 +331,7 @@ export default function EmployesPage() {
             <thead>
               <tr style={{ background: '#FAF8F6' }}>
                 {['Matricule', 'Nom', 'Poste', 'Contrat', 'Entrée', 'Statut'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 24px', textAlign: 'left',
-                    fontSize: '11px', fontWeight: 600, color: '#A8A29E',
-                    textTransform: 'uppercase', letterSpacing: '0.07em',
-                    borderBottom: '1px solid #F0EDE9'
-                  }}>{h}</th>
+                  <th key={h} style={{ padding: '12px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -373,8 +339,7 @@ export default function EmployesPage() {
               {employes.map(emp => {
                 const cc = CONTRAT_CONFIG[emp.type_contrat] || CONTRAT_CONFIG['CDI']
                 return (
-                  <tr key={emp.id}
-                    onDoubleClick={() => handleDoubleClick(emp)}
+                  <tr key={emp.id} onDoubleClick={() => handleDoubleClick(emp)}
                     style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -400,11 +365,7 @@ export default function EmployesPage() {
                     </td>
                     <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.date_entree || '—'}</td>
                     <td style={{ padding: '15px 24px' }}>
-                      <span style={{
-                        fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
-                        background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
-                        color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C',
-                      }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C' }}>
                         {emp.statut}
                       </span>
                     </td>

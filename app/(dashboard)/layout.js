@@ -31,6 +31,11 @@ const NAV_ICONS = {
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
     </svg>
   ),
+  '/compteurs': (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
   '/messages': (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -68,16 +73,16 @@ const ROLE_CONFIG = {
   salarie: { label: 'Salarié',        bg: 'rgba(134,239,172,0.18)', color: '#A7F3C0' },
 }
 
-// Titres et sous-titres par page
 const PAGE_META = {
-  '/dashboard':  { title: 'Tableau de bord',   sub: (p, r) => r === 'admin' || r === 'manager' ? "Vue d'ensemble de votre équipe" : 'Votre espace personnel' },
-  '/profil':     { title: 'Mon profil',         sub: () => 'Vos informations personnelles et contractuelles' },
-  '/calendrier': { title: 'Calendrier',          sub: () => 'Visualisez les absences de votre équipe' },
-  '/employes':   { title: 'Employés',            sub: () => 'Gérez les membres de votre équipe' },
-  '/absences':   { title: 'Absences',            sub: () => 'Gérez et suivez les demandes d\'absence' },
-  '/messages':   { title: 'Messages & Support',  sub: () => 'Consultez et répondez aux messages' },
-  '/contact':    { title: 'Contact & Support',   sub: () => 'Envoyez un message à votre service RH' },
-  '/societe':    { title: 'Société',             sub: () => 'Informations de votre entreprise' },
+  '/dashboard':  { title: 'Tableau de bord',    sub: (p, r) => r === 'admin' || r === 'manager' ? "Vue d'ensemble de votre équipe" : 'Votre espace personnel' },
+  '/profil':     { title: 'Mon profil',          sub: () => 'Vos informations personnelles et contractuelles' },
+  '/calendrier': { title: 'Calendrier',           sub: () => 'Visualisez les absences de votre équipe' },
+  '/employes':   { title: 'Employés',             sub: () => 'Gérez les membres de votre équipe' },
+  '/absences':   { title: 'Absences',             sub: () => "Gérez et suivez les demandes d'absence" },
+  '/compteurs':  { title: 'Compteurs',            sub: () => 'Ajustez les soldes de congés de votre équipe' },
+  '/messages':   { title: 'Messages & Support',   sub: () => 'Consultez et répondez aux messages' },
+  '/contact':    { title: 'Contact & Support',    sub: () => 'Envoyez un message à votre service RH' },
+  '/societe':    { title: 'Société',              sub: () => 'Informations de votre entreprise' },
 }
 
 const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -90,18 +95,17 @@ export default function DashboardLayout({ children }) {
   const [nom, setNom] = useState('')
   const [absencesEnAttente, setAbsencesEnAttente] = useState(0)
   const [messagesOuverts, setMessagesOuverts] = useState(0)
+  const [demandesRecup, setDemandesRecup] = useState(0)
   const [clochePaneau, setClochePaneau] = useState(false)
   const clocheRef = useRef(null)
 
-  const totalNotifs = absencesEnAttente + messagesOuverts
+  const totalNotifs = absencesEnAttente + messagesOuverts + demandesRecup
 
   useEffect(() => { fetchRole() }, [])
 
   useEffect(() => {
     const handler = (e) => {
-      if (clocheRef.current && !clocheRef.current.contains(e.target)) {
-        setClochePaneau(false)
-      }
+      if (clocheRef.current && !clocheRef.current.contains(e.target)) setClochePaneau(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -121,7 +125,9 @@ export default function DashboardLayout({ children }) {
       }
       if (emp.role === 'admin') {
         fetchMessagesOuverts()
+        fetchDemandesRecup()
         setupRealtimeMessages()
+        setupRealtimeRecup()
       }
     }
   }
@@ -136,18 +142,27 @@ export default function DashboardLayout({ children }) {
     setMessagesOuverts(count || 0)
   }
 
+  const fetchDemandesRecup = async () => {
+    const { count } = await supabase.from('demandes_recup').select('*', { count: 'exact', head: true }).eq('statut', 'En attente')
+    setDemandesRecup(count || 0)
+  }
+
   const setupRealtimeAbsences = () => {
     supabase.channel('absences-notifs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'absences' }, () => {
-        fetchAbsencesEnAttente()
-      }).subscribe()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'absences' }, () => fetchAbsencesEnAttente())
+      .subscribe()
   }
 
   const setupRealtimeMessages = () => {
     supabase.channel('messages-notifs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        fetchMessagesOuverts()
-      }).subscribe()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchMessagesOuverts())
+      .subscribe()
+  }
+
+  const setupRealtimeRecup = () => {
+    supabase.channel('recup-notifs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demandes_recup' }, () => fetchDemandesRecup())
+      .subscribe()
   }
 
   const handleLogout = async () => {
@@ -161,6 +176,7 @@ export default function DashboardLayout({ children }) {
     { href: '/calendrier', label: 'Calendrier',        roles: ['admin', 'manager', 'salarie'] },
     { href: '/employes',   label: 'Employés',          roles: ['admin'] },
     { href: '/absences',   label: 'Absences',          roles: ['admin', 'manager', 'salarie'], badge: absencesEnAttente },
+    { href: '/compteurs',  label: 'Compteurs',         roles: ['admin'], badge: demandesRecup },
     { href: '/messages',   label: 'Messages',          roles: ['admin'], badge: messagesOuverts },
     { href: '/contact',    label: 'Contact & Support', roles: ['salarie'] },
     { href: '/societe',    label: 'Société',           roles: ['admin', 'manager', 'salarie'] },
@@ -254,12 +270,10 @@ export default function DashboardLayout({ children }) {
                         {totalNotifs > 0 ? `${totalNotifs} en attente` : 'Tout est à jour'}
                       </p>
                     </div>
+
+                    {/* Absences */}
                     <Link href="/absences" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
-                      <div style={{
-                        padding: '12px 16px', display: 'flex', alignItems: 'center',
-                        justifyContent: 'space-between', cursor: 'pointer',
-                        borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s',
-                      }}
+                      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -273,23 +287,40 @@ export default function DashboardLayout({ children }) {
                             <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>en attente de validation</p>
                           </div>
                         </div>
-                        <span style={{
-                          background: absencesEnAttente > 0 ? 'rgba(220,38,38,0.1)' : '#F0EDE9',
-                          color: absencesEnAttente > 0 ? '#DC2626' : '#A8A29E',
-                          fontSize: '12px', fontWeight: 700,
-                          padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center'
-                        }}>
+                        <span style={{ background: absencesEnAttente > 0 ? 'rgba(220,38,38,0.1)' : '#F0EDE9', color: absencesEnAttente > 0 ? '#DC2626' : '#A8A29E', fontSize: '12px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center' }}>
                           {absencesEnAttente}
                         </span>
                       </div>
                     </Link>
+
+                    {/* Récup */}
+                    {role === 'admin' && (
+                      <Link href="/compteurs" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1C1917', margin: 0 }}>Récupérations</p>
+                              <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>demandes en attente</p>
+                            </div>
+                          </div>
+                          <span style={{ background: demandesRecup > 0 ? '#FFFBEB' : '#F0EDE9', color: demandesRecup > 0 ? '#B45309' : '#A8A29E', fontSize: '12px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center' }}>
+                            {demandesRecup}
+                          </span>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* Messages */}
                     {role === 'admin' && (
                       <Link href="/messages" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
-                        <div style={{
-                          padding: '12px 16px', display: 'flex', alignItems: 'center',
-                          justifyContent: 'space-between', cursor: 'pointer',
-                          transition: 'background 0.1s',
-                        }}
+                        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', transition: 'background 0.1s' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -303,17 +334,13 @@ export default function DashboardLayout({ children }) {
                               <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>ouverts sans réponse</p>
                             </div>
                           </div>
-                          <span style={{
-                            background: messagesOuverts > 0 ? '#FFFBEB' : '#F0EDE9',
-                            color: messagesOuverts > 0 ? '#B45309' : '#A8A29E',
-                            fontSize: '12px', fontWeight: 700,
-                            padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center'
-                          }}>
+                          <span style={{ background: messagesOuverts > 0 ? '#FFFBEB' : '#F0EDE9', color: messagesOuverts > 0 ? '#B45309' : '#A8A29E', fontSize: '12px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center' }}>
                             {messagesOuverts}
                           </span>
                         </div>
                       </Link>
                     )}
+
                     {totalNotifs === 0 && (
                       <div style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{ fontSize: '20px' }}>✅</span>
@@ -329,10 +356,7 @@ export default function DashboardLayout({ children }) {
 
         {/* NAV */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          <p style={{
-            fontSize: '10px', fontWeight: 600, color: SIDEBAR.textMuted,
-            letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase'
-          }}>Navigation</p>
+          <p style={{ fontSize: '10px', fontWeight: 600, color: SIDEBAR.textMuted, letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase' }}>Navigation</p>
           {navFiltres.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -355,10 +379,7 @@ export default function DashboardLayout({ children }) {
                   <span>{item.label}</span>
                 </div>
                 {item.badge > 0 && (
-                  <span style={{
-                    background: 'rgba(220,38,38,0.25)', color: '#FCA5A5',
-                    fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px'
-                  }}>
+                  <span style={{ background: 'rgba(220,38,38,0.25)', color: '#FCA5A5', fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px' }}>
                     {item.badge}
                   </span>
                 )}
@@ -396,17 +417,10 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* ===================== MAIN CONTENT ===================== */}
-      <div className="flex-1 ml-60 min-h-screen" style={{
-        display: 'flex', flexDirection: 'column', position: 'relative',
-        background: '#F7F5F3',
-      }}>
+      <div className="flex-1 ml-60 min-h-screen" style={{ display: 'flex', flexDirection: 'column', position: 'relative', background: '#F7F5F3' }}>
 
-        {/* FOND C3 — SVG pleine page, fixe en haut, s'évanouit vers le bas */}
-        <svg style={{
-          position: 'fixed', top: 0, left: '240px', right: 0,
-          width: 'calc(100% - 240px)', height: '100vh',
-          pointerEvents: 'none', zIndex: 0,
-        }} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYTop slice">
+        {/* FOND C3 */}
+        <svg style={{ position: 'fixed', top: 0, left: '240px', right: 0, width: 'calc(100% - 240px)', height: '100vh', pointerEvents: 'none', zIndex: 0 }} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYTop slice">
           <defs>
             <linearGradient id="bgFade" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"   stopColor="#4A2330" stopOpacity="0.72"/>
@@ -423,71 +437,49 @@ export default function DashboardLayout({ children }) {
               <stop offset="100%" stopColor="#6B2F42" stopOpacity="0"/>
             </linearGradient>
           </defs>
-
-          {/* Fond dégradé global */}
           <rect width="100%" height="100%" fill="url(#bgFade)"/>
-
-          {/* Cercles concentriques droite */}
           <circle cx="95%" cy="-20" r="320" fill="none" stroke="url(#shapeR)" strokeWidth="2.5"/>
           <circle cx="95%" cy="-20" r="230" fill="none" stroke="url(#shapeR)" strokeWidth="2"/>
           <circle cx="95%" cy="-20" r="150" fill="none" stroke="url(#shapeR)" strokeWidth="1.5"/>
           <circle cx="95%" cy="-20" r="80"  fill="none" stroke="url(#shapeR)" strokeWidth="1"/>
-
-          {/* Cercles concentriques gauche */}
           <circle cx="5%"  cy="-15" r="280" fill="none" stroke="url(#shapeL)" strokeWidth="2.5"/>
           <circle cx="5%"  cy="-15" r="190" fill="none" stroke="url(#shapeL)" strokeWidth="2"/>
           <circle cx="5%"  cy="-15" r="110" fill="none" stroke="url(#shapeL)" strokeWidth="1.5"/>
           <circle cx="5%"  cy="-15" r="50"  fill="none" stroke="url(#shapeL)" strokeWidth="1"/>
-
-          {/* Cercle centre */}
           <circle cx="50%" cy="8"   r="160" fill="none" stroke="#8B4A5A" strokeWidth="1.5" opacity="0.5"/>
           <circle cx="50%" cy="8"   r="90"  fill="none" stroke="#8B4A5A" strokeWidth="1"   opacity="0.35"/>
-
-          {/* Hexagones */}
           <polygon points="62%,0 70%,4% 66%,11% 58%,11% 54%,4%"  fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
           <polygon points="22%,-1% 27%,5% 17%,5%"                 fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
           <polygon points="77%,1% 82%,8% 72%,8%"                  fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.58"/>
           <polygon points="39%,-1% 43%,4% 35%,4%"                 fill="none" stroke="#6B2F42" strokeWidth="2"   opacity="0.52"/>
-
-          {/* Carrés tournés */}
           <rect x="3%"  y="0.5%" width="64" height="64" fill="none" stroke="#6B2F42" strokeWidth="2.2" opacity="0.58" transform="rotate(18 60 55)"/>
           <rect x="35%" y="0.8%" width="46" height="46" fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.52" transform="rotate(30 400 38)"/>
           <rect x="53%" y="2%"   width="38" height="38" fill="none" stroke="#8B4A5A" strokeWidth="1.8" opacity="0.45" transform="rotate(12 560 38)"/>
           <rect x="83%" y="1%"   width="42" height="42" fill="none" stroke="#4A2330" strokeWidth="1.8" opacity="0.42" transform="rotate(25 840 36)"/>
-
-          {/* Croix */}
-          <line x1="16%" y1="-1%" x2="16%" y2="7%"  strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
-          <line x1="13%" y1="3%"  x2="19%" y2="3%"  strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
-          <line x1="43%" y1="-1%" x2="43%" y2="6%"  strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
-          <line x1="40%" y1="2.5%" x2="46%" y2="2.5%" strokeWidth="2" stroke="#4A2330" opacity="0.58"/>
-          <line x1="70%" y1="0%"  x2="70%" y2="7%"  strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
-          <line x1="67%" y1="3.5%" x2="73%" y2="3.5%" strokeWidth="2" stroke="#4A2330" opacity="0.52"/>
-          <line x1="87%" y1="1%"  x2="87%" y2="8%"  strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
+          <line x1="16%" y1="-1%" x2="16%" y2="7%"    strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+          <line x1="13%" y1="3%"  x2="19%" y2="3%"    strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+          <line x1="43%" y1="-1%" x2="43%" y2="6%"    strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
+          <line x1="40%" y1="2.5%" x2="46%" y2="2.5%" strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
+          <line x1="70%" y1="0%"  x2="70%" y2="7%"    strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
+          <line x1="67%" y1="3.5%" x2="73%" y2="3.5%" strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
+          <line x1="87%" y1="1%"  x2="87%" y2="8%"    strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
           <line x1="84%" y1="4.5%" x2="90%" y2="4.5%" strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
         </svg>
 
-        {/* HEADER PAGE — titre blanc sur le fond bordeaux */}
+        {/* HEADER PAGE */}
         {pageMeta && (
-          <div style={{
-            position: 'relative', zIndex: 2,
-            padding: '32px 40px 24px',
-          }}>
+          <div style={{ position: 'relative', zIndex: 2, padding: '32px 40px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
                 width: '44px', height: '44px', borderRadius: '13px', flexShrink: 0,
-                background: 'rgba(255,255,255,0.15)',
-                border: '1px solid rgba(255,255,255,0.25)',
+                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '15px', fontWeight: 700, color: 'white',
               }}>
                 {initiales || '?'}
               </div>
               <div>
-                <h1 style={{
-                  fontSize: '22px', fontWeight: 700, color: 'white',
-                  margin: 0, letterSpacing: '-0.3px',
-                  textShadow: '0 1px 6px rgba(0,0,0,0.15)',
-                }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'white', margin: 0, letterSpacing: '-0.3px', textShadow: '0 1px 6px rgba(0,0,0,0.15)' }}>
                   {pageTitle}
                 </h1>
                 <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '3px 0 0' }}>
@@ -502,7 +494,6 @@ export default function DashboardLayout({ children }) {
         <div style={{ position: 'relative', zIndex: 2, flex: 1 }}>
           {children}
         </div>
-
       </div>
     </div>
   )

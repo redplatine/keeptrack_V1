@@ -30,6 +30,7 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 const TYPE_CONFIG = {
   'CP':                  { bg: '#EFF6FF', color: '#2563EB' },
   'RTT':                 { bg: '#F9EEF1', color: '#6B2F42' },
+  'Récupération':        { bg: '#FFFBEB', color: '#B45309' },
   'Maladie':             { bg: '#FEF2F2', color: '#DC2626' },
   'Maternité':           { bg: '#FDF4FF', color: '#A21CAF' },
   'Paternité':           { bg: '#F2E6E9', color: '#8B4A5A' },
@@ -104,16 +105,26 @@ export default function AbsencesPage() {
   const [absences, setAbsences] = useState([])
   const [employes, setEmployes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
   const [currentEmploye, setCurrentEmploye] = useState(null)
+
+  // Formulaire absence
+  const [showForm, setShowForm] = useState(false)
   const [alerteForm, setAlerteForm] = useState(null)
-  const [filtreMois, setFiltreMois] = useState('')
-  const [filtreStatut, setFiltreStatut] = useState('')
-  const [filtreEmployeId, setFiltreEmployeId] = useState('')
   const [form, setForm] = useState({
     employe_id: '', type_absence: 'CP', date_debut: '',
     date_fin: '', demi_journee: false, commentaire_salarie: '',
   })
+
+  // Formulaire demande récup
+  const [showFormRecup, setShowFormRecup] = useState(false)
+  const [formRecup, setFormRecup] = useState({ nb_jours: '', motif: '' })
+  const [alerteRecup, setAlerteRecup] = useState(null)
+  const [successRecup, setSuccessRecup] = useState(false)
+
+  // Filtres
+  const [filtreMois, setFiltreMois] = useState('')
+  const [filtreStatut, setFiltreStatut] = useState('')
+  const [filtreEmployeId, setFiltreEmployeId] = useState('')
 
   const nbJoursCalcule = calculNbJours(form.type_absence, form.date_debut, form.date_fin, form.demi_journee)
   const optionsMois = useMemo(() => genererOptionsMois(), [])
@@ -156,8 +167,8 @@ export default function AbsencesPage() {
   }, [absences, filtreMois, filtreStatut, filtreEmployeId])
 
   const typesDisponibles = isManager
-    ? ['CP', 'RTT', 'Maladie', 'Absence injustifiée', 'Congé sans solde', 'Événement familial', 'Maternité', 'Paternité']
-    : ['CP', 'RTT', 'Maladie', 'Congé sans solde', 'Événement familial', 'Maternité', 'Paternité']
+    ? ['CP', 'RTT', 'Récupération', 'Maladie', 'Absence injustifiée', 'Congé sans solde', 'Événement familial', 'Maternité', 'Paternité']
+    : ['CP', 'RTT', 'Récupération', 'Maladie', 'Congé sans solde', 'Événement familial', 'Maternité', 'Paternité']
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -167,12 +178,14 @@ export default function AbsencesPage() {
     if (!employe_id) { setAlerteForm('Votre profil employé est introuvable.'); return }
     const date_fin_reelle = form.demi_journee ? form.date_debut : form.date_fin
 
-    if (form.type_absence === 'CP' || form.type_absence === 'RTT') {
+    if (['CP', 'RTT', 'Récupération'].includes(form.type_absence)) {
       const annee = new Date().getFullYear()
       const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', employe_id).eq('annee', annee).single()
       if (solde) {
         if (form.type_absence === 'RTT' && nbJoursCalcule > (solde.rtt_solde || 0)) {
           setAlerteForm(`Solde RTT insuffisant — Disponible : ${solde.rtt_solde} j, demande : ${nbJoursCalcule} j`); return
+        } else if (form.type_absence === 'Récupération' && nbJoursCalcule > (solde.recup_solde || 0)) {
+          setAlerteForm(`Solde Récupération insuffisant — Disponible : ${solde.recup_solde} j, demande : ${nbJoursCalcule} j`); return
         } else if (form.type_absence === 'CP') {
           const totalCp = (solde.cp_n1_solde || 0) + (solde.cp_n_solde || 0)
           if (nbJoursCalcule > totalCp) { setAlerteForm(`Solde CP insuffisant — Disponible : ${totalCp} j, demande : ${nbJoursCalcule} j`); return }
@@ -199,6 +212,23 @@ export default function AbsencesPage() {
     } else { setAlerteForm('Erreur : ' + error.message) }
   }
 
+  const handleDemandeRecup = async (e) => {
+    e.preventDefault()
+    setAlerteRecup(null)
+    const nb = parseFloat(formRecup.nb_jours)
+    if (!nb || nb <= 0) { setAlerteRecup('Nombre de jours invalide.'); return }
+    const { error } = await supabase.from('demandes_recup').insert([{
+      employe_id: currentEmploye.id,
+      nb_jours: nb,
+      motif: formRecup.motif || null,
+    }])
+    if (error) { setAlerteRecup('Erreur : ' + error.message); return }
+    setShowFormRecup(false)
+    setFormRecup({ nb_jours: '', motif: '' })
+    setSuccessRecup(true)
+    setTimeout(() => setSuccessRecup(false), 4000)
+  }
+
   const handleValidation = async (id, statut) => {
     const abs = absences.find(a => a.id === id)
     if (statut === 'Approuvée' && abs) {
@@ -208,6 +238,8 @@ export default function AbsencesPage() {
         const nbJours = abs.nb_jours
         if (abs.type_absence === 'RTT') {
           await supabase.from('soldes_conges').update({ rtt_solde: Math.max(0, (solde.rtt_solde || 0) - nbJours), rtt_pris: (solde.rtt_pris || 0) + nbJours }).eq('employe_id', abs.employe_id).eq('annee', annee)
+        } else if (abs.type_absence === 'Récupération') {
+          await supabase.from('soldes_conges').update({ recup_solde: Math.max(0, (solde.recup_solde || 0) - nbJours), recup_pris: (solde.recup_pris || 0) + nbJours }).eq('employe_id', abs.employe_id).eq('annee', annee)
         } else if (abs.type_absence === 'CP') {
           let r = nbJours, n1s = solde.cp_n1_solde || 0, ns = solde.cp_n_solde || 0, n1p = solde.cp_n1_pris || 0, np = solde.cp_n_pris || 0
           if (n1s >= r) { n1s -= r; n1p += r; r = 0 } else { r -= n1s; n1p += n1s; n1s = 0; ns = Math.max(0, ns - r); np += r }
@@ -237,6 +269,8 @@ export default function AbsencesPage() {
         const nbJours = abs.nb_jours
         if (abs.type_absence === 'RTT') {
           await supabase.from('soldes_conges').update({ rtt_solde: (solde.rtt_solde || 0) + nbJours, rtt_pris: Math.max(0, (solde.rtt_pris || 0) - nbJours) }).eq('employe_id', abs.employe_id).eq('annee', annee)
+        } else if (abs.type_absence === 'Récupération') {
+          await supabase.from('soldes_conges').update({ recup_solde: (solde.recup_solde || 0) + nbJours, recup_pris: Math.max(0, (solde.recup_pris || 0) - nbJours) }).eq('employe_id', abs.employe_id).eq('annee', annee)
         } else if (abs.type_absence === 'CP') {
           let r = nbJours, ns = solde.cp_n_solde || 0, n1s = solde.cp_n1_solde || 0, np = solde.cp_n_pris || 0, n1p = solde.cp_n1_pris || 0
           const d = Math.min(np, r); ns += d; np -= d; r -= d
@@ -273,7 +307,7 @@ export default function AbsencesPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* ACTIONS — boutons + compteur, sans titre (géré par le layout) */}
+      {/* ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
           {absencesFiltrees.length} demande(s)
@@ -295,7 +329,26 @@ export default function AbsencesPage() {
               Exporter Excel
             </button>
           )}
-          <button onClick={() => { setShowForm(!showForm); setAlerteForm(null) }} style={{
+
+          {/* BOUTON RÉCUP — salarié uniquement */}
+          {!isManager && (
+            <button onClick={() => { setShowFormRecup(!showFormRecup); setShowForm(false); setAlerteRecup(null) }} style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '9px 16px', borderRadius: '10px',
+              border: '1px solid #FDE68A', background: showFormRecup ? '#FEF3C7' : '#FFFBEB',
+              color: '#B45309', fontSize: '13.5px', fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FEF3C7'}
+              onMouseLeave={e => e.currentTarget.style.background = showFormRecup ? '#FEF3C7' : '#FFFBEB'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Demander des récups
+            </button>
+          )}
+
+          <button onClick={() => { setShowForm(!showForm); setShowFormRecup(false); setAlerteForm(null) }} style={{
             display: 'flex', alignItems: 'center', gap: '7px',
             padding: '9px 16px', borderRadius: '10px', border: 'none',
             background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
@@ -311,11 +364,72 @@ export default function AbsencesPage() {
         </div>
       </div>
 
+      {/* SUCCÈS RÉCUP */}
+      {successRecup && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px',
+          padding: '12px 16px', marginBottom: '16px', color: '#B45309', fontSize: '13.5px', fontWeight: 500
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Demande envoyée — votre administrateur va la traiter.
+        </div>
+      )}
+
+      {/* FORMULAIRE DEMANDE RÉCUP — salarié */}
+      {showFormRecup && !isManager && (
+        <div style={{
+          background: 'white', borderRadius: '14px', padding: '24px 28px',
+          border: '1px solid #FDE68A', boxShadow: '0 2px 8px rgba(245,158,11,0.08)', marginBottom: '20px'
+        }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 4px' }}>
+            Demander des jours de récupération
+          </h2>
+          <p style={{ fontSize: '13px', color: '#A8A29E', margin: '0 0 20px' }}>
+            Votre administrateur validera la demande et créditera votre compteur Récup.
+          </p>
+
+          {alerteRecup && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px' }}>
+              {alerteRecup}
+            </div>
+          )}
+
+          <form onSubmit={handleDemandeRecup}>
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '16px', alignItems: 'end' }}>
+              <div>
+                <label style={S.label}>Nombre de jours</label>
+                <input required type="number" step="0.5" min="0.5"
+                  value={formRecup.nb_jours}
+                  onChange={e => setFormRecup({ ...formRecup, nb_jours: e.target.value })}
+                  placeholder="Ex: 1, 0.5…" style={S.input} />
+              </div>
+              <div>
+                <label style={S.label}>Motif (optionnel)</label>
+                <input type="text"
+                  value={formRecup.motif}
+                  onChange={e => setFormRecup({ ...formRecup, motif: e.target.value })}
+                  placeholder="Ex: Heures supplémentaires semaine 12…" style={S.input} />
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', paddingTop: '4px' }}>
+                <button type="submit" style={{
+                  padding: '10px 20px', borderRadius: '10px', border: 'none',
+                  background: '#B45309', color: 'white', fontSize: '13.5px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>Envoyer la demande</button>
+                <button type="button" onClick={() => { setShowFormRecup(false); setAlerteRecup(null) }} style={{
+                  padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
+                  background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>Annuler</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* FILTRES */}
-      <div style={{
-        background: 'white', borderRadius: '14px', padding: '18px 22px',
-        border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px'
-      }}>
+      <div style={{ background: 'white', borderRadius: '14px', padding: '18px 22px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-end' }}>
           <div>
             <label style={S.label}>Mois</label>
@@ -343,13 +457,12 @@ export default function AbsencesPage() {
             </div>
           )}
           {nbFiltresActifs > 0 && (
-            <button onClick={() => { setFiltreMois(''); setFiltreStatut(''); setFiltreEmployeId('') }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '9px 14px', borderRadius: '10px', border: '1px solid #E8E4E0',
-                background: '#FAF8F6', color: '#78716C', fontSize: '13px',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+            <button onClick={() => { setFiltreMois(''); setFiltreStatut(''); setFiltreEmployeId('') }} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '9px 14px', borderRadius: '10px', border: '1px solid #E8E4E0',
+              background: '#FAF8F6', color: '#78716C', fontSize: '13px',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
@@ -359,20 +472,13 @@ export default function AbsencesPage() {
         </div>
       </div>
 
-      {/* FORMULAIRE */}
+      {/* FORMULAIRE NOUVELLE ABSENCE */}
       {showForm && (
-        <div style={{
-          background: 'white', borderRadius: '14px', padding: '24px 28px',
-          border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px'
-        }}>
+        <div style={{ background: 'white', borderRadius: '14px', padding: '24px 28px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 20px' }}>Nouvelle demande d'absence</h2>
 
           {alerteForm && (
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: '10px',
-              background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
-              padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px'
-            }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}>
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
@@ -414,16 +520,8 @@ export default function AbsencesPage() {
                 </div>
               )}
               {(form.date_debut && (form.date_fin || form.demi_journee)) && (
-                <div style={{
-                  gridColumn: '1 / -1', background: '#F0EDE9', borderRadius: '12px',
-                  padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px',
-                  border: '1px solid #E8E4E0'
-                }}>
-                  <div style={{
-                    width: '44px', height: '44px', borderRadius: '12px', background: '#1C1917',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '18px', fontWeight: 700, color: 'white', flexShrink: 0
-                  }}>
+                <div style={{ gridColumn: '1 / -1', background: '#F0EDE9', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid #E8E4E0' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#1C1917', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'white', flexShrink: 0 }}>
                     {nbJoursCalcule}
                   </div>
                   <div>
@@ -445,18 +543,10 @@ export default function AbsencesPage() {
                   style={{ ...S.input, resize: 'none', lineHeight: 1.5 }} />
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px' }}>
-                <button type="submit" style={{
-                  padding: '10px 20px', borderRadius: '10px', border: 'none',
-                  background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
+                <button type="submit" style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Envoyer la demande
                 </button>
-                <button type="button" onClick={() => { setShowForm(false); setAlerteForm(null) }} style={{
-                  padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
-                  background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
+                <button type="button" onClick={() => { setShowForm(false); setAlerteForm(null) }} style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
               </div>
@@ -466,10 +556,7 @@ export default function AbsencesPage() {
       )}
 
       {/* TABLEAU */}
-      <div style={{
-        background: 'white', borderRadius: '14px', border: '1px solid #E8E4E0',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflow: 'hidden'
-      }}>
+      <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
@@ -484,12 +571,7 @@ export default function AbsencesPage() {
             <thead>
               <tr style={{ background: '#FAF8F6' }}>
                 {['Employé', 'Type', 'Période', 'Jours', 'Statut', 'Actions'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 24px', textAlign: 'left',
-                    fontSize: '11px', fontWeight: 600, color: '#A8A29E',
-                    textTransform: 'uppercase', letterSpacing: '0.07em',
-                    borderBottom: '1px solid #F0EDE9'
-                  }}>{h}</th>
+                  <th key={h} style={{ padding: '12px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -501,17 +583,14 @@ export default function AbsencesPage() {
                   <tr key={abs.id} style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-
                     <td style={{ padding: '15px 24px', fontSize: '14px', fontWeight: 500, color: '#1C1917' }}>
                       {abs.employes?.prenom} {abs.employes?.nom}
                     </td>
-
                     <td style={{ padding: '15px 24px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: tc.bg, color: tc.color }}>
                         {abs.type_absence}
                       </span>
                     </td>
-
                     <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>
                       {abs.nb_jours === 0.5 ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -526,50 +605,28 @@ export default function AbsencesPage() {
                         </span>
                       )}
                     </td>
-
                     <td style={{ padding: '15px 24px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        minWidth: '44px', height: '28px', borderRadius: '8px', padding: '0 10px',
-                        fontSize: '13px', fontWeight: 700, background: '#F0EDE9', color: '#44403C'
-                      }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '44px', height: '28px', borderRadius: '8px', padding: '0 10px', fontSize: '13px', fontWeight: 700, background: '#F0EDE9', color: '#44403C' }}>
                         {abs.nb_jours}
                       </span>
                     </td>
-
                     <td style={{ padding: '15px 24px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        fontSize: '12px', fontWeight: 600, padding: '4px 10px',
-                        borderRadius: '20px', background: sc.bg, color: sc.color,
-                        border: `1px solid ${sc.border}`
-                      }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, border: `1px solid ${sc.border}` }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
                         {abs.statut}
                       </span>
                     </td>
-
                     <td style={{ padding: '15px 24px' }}>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {isManager && abs.statut === 'En attente' && (
                           <>
-                            <button onClick={() => handleValidation(abs.id, 'Approuvée')} style={{
-                              display: 'flex', alignItems: 'center', gap: '5px',
-                              padding: '5px 12px', borderRadius: '8px', border: '1px solid #BBF7D0',
-                              background: '#F0FDF4', color: '#16A34A', fontSize: '12px', fontWeight: 600,
-                              cursor: 'pointer', fontFamily: 'inherit',
-                            }}
+                            <button onClick={() => handleValidation(abs.id, 'Approuvée')} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '8px', border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#16A34A', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                               onMouseEnter={e => e.currentTarget.style.background = '#DCFCE7'}
                               onMouseLeave={e => e.currentTarget.style.background = '#F0FDF4'}>
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                               Approuver
                             </button>
-                            <button onClick={() => handleValidation(abs.id, 'Refusée')} style={{
-                              display: 'flex', alignItems: 'center', gap: '5px',
-                              padding: '5px 12px', borderRadius: '8px', border: '1px solid #FECACA',
-                              background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600,
-                              cursor: 'pointer', fontFamily: 'inherit',
-                            }}
+                            <button onClick={() => handleValidation(abs.id, 'Refusée')} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '8px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                               onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
                               onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -577,12 +634,7 @@ export default function AbsencesPage() {
                             </button>
                           </>
                         )}
-                        <button onClick={() => handleSupprimer(abs)} style={{
-                          display: 'flex', alignItems: 'center', gap: '5px',
-                          padding: '5px 12px', borderRadius: '8px', border: '1px solid #E8E4E0',
-                          background: '#FAF8F6', color: '#A8A29E', fontSize: '12px', fontWeight: 600,
-                          cursor: 'pointer', fontFamily: 'inherit',
-                        }}
+                        <button onClick={() => handleSupprimer(abs)} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '8px', border: '1px solid #E8E4E0', background: '#FAF8F6', color: '#A8A29E', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                           onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.borderColor = '#FECACA' }}
                           onMouseLeave={e => { e.currentTarget.style.background = '#FAF8F6'; e.currentTarget.style.color = '#A8A29E'; e.currentTarget.style.borderColor = '#E8E4E0' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>

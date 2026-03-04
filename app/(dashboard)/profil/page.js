@@ -216,10 +216,11 @@ export default function ProfilPage() {
           {!soldes ? (
             <p style={{ color: '#A8A29E', fontSize: '14px', margin: 0 }}>Aucun solde disponible pour cette année.</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               <SoldeCard label="Congés Payés N-1" acquis={soldes.cp_n1_acquis} pris={soldes.cp_n1_pris} solde={soldes.cp_n1_solde} accent="#8B4A5A" />
               <SoldeCard label="Congés Payés N"   acquis={soldes.cp_n_acquis}  pris={soldes.cp_n_pris}  solde={soldes.cp_n_solde}  accent="#4F7EF7" />
               <SoldeCard label="RTT"               acquis={soldes.rtt_acquis}   pris={soldes.rtt_pris}   solde={soldes.rtt_solde}   accent="#16A34A" />
+              <SoldeCard label="Récupération"      acquis={soldes.recup_acquis} pris={soldes.recup_pris} solde={soldes.recup_solde} accent="#B45309" />
             </div>
           )}
         </div>
