@@ -90,7 +90,7 @@ export async function POST(request) {
 
   const { error } = await resend.emails.send({
     from: 'KeepTrack <onboarding@resend.dev>',
-    to: emailSalarie,
+    to: 'alexandre.aubry.dumand@gmail.com',
     subject,
     html,
   })
