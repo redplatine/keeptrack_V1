@@ -98,7 +98,8 @@ export default function ProfilPage() {
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+      {/* Spinner bordeaux */}
+      <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 
@@ -131,25 +132,24 @@ export default function ProfilPage() {
             onClick={() => fileInputRef.current?.click()}
             style={{
               width: '88px', height: '88px', borderRadius: '20px',
-              background: avatarError || !avatar ? '#F0EDE9' : 'transparent',
+              background: avatarError || !avatar ? '#F2E6E9' : 'transparent',
               border: '2px dashed #E8E4E0', overflow: 'hidden',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', position: 'relative', flexShrink: 0,
               transition: 'border-color 0.15s',
             }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#4F7EF7'}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#8B4A5A'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E8E4E0'}>
             {uploadLoading ? (
-              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#4F7EF7', animation: 'spin 0.8s linear infinite' }} />
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
             ) : avatar && !avatarError ? (
               <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={() => setAvatarError(true)} />
             ) : (
-              <span style={{ fontSize: '28px', fontWeight: 700, color: '#78716C' }}>{initiales}</span>
+              <span style={{ fontSize: '28px', fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
             )}
-            {/* Overlay au hover */}
             <div style={{
-              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)',
+              position: 'absolute', inset: 0, background: 'rgba(74,35,48,0.35)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               opacity: 0, transition: 'opacity 0.15s', borderRadius: '18px'
             }}
@@ -172,13 +172,14 @@ export default function ProfilPage() {
           <p style={{ fontSize: '14px', color: '#78716C', margin: '0 0 2px' }}>{employe.poste || '—'}</p>
           <p style={{ fontSize: '13px', color: '#A8A29E', margin: '0 0 12px' }}>{employe.email}</p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Badge statut — bordeaux */}
             <span style={{
               fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
-              background: employe.statut === 'Cadre' ? '#EEF2FF' : '#F0EDE9',
-              color: employe.statut === 'Cadre' ? '#4F46E5' : '#78716C',
+              background: employe.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
+              color: employe.statut === 'Cadre' ? '#6B2F42' : '#78716C',
             }}>{employe.statut}</span>
             {employe.type_contrat && (
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#EEF2FF', color: '#4F46E5' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#F9EEF1', color: '#6B2F42' }}>
                 {employe.type_contrat}
               </span>
             )}
@@ -225,17 +226,17 @@ export default function ProfilPage() {
               <SoldeCard
                 label="Congés Payés N-1"
                 acquis={soldes.cp_n1_acquis} pris={soldes.cp_n1_pris} solde={soldes.cp_n1_solde}
-                accent="#4F7EF7" bg="#EEF2FF"
+                accent="#8B4A5A" bg="#F9EEF1"
               />
               <SoldeCard
                 label="Congés Payés N"
                 acquis={soldes.cp_n_acquis} pris={soldes.cp_n_pris} solde={soldes.cp_n_solde}
-                accent="#6366F1" bg="#EEF2FF"
+                accent="#4F7EF7" bg="#EFF6FF"
               />
               <SoldeCard
                 label="RTT"
                 acquis={soldes.rtt_acquis} pris={soldes.rtt_pris} solde={soldes.rtt_solde}
-                accent="#10B981" bg="#F0FDF4"
+                accent="#16A34A" bg="#F0FDF4"
               />
             </div>
           )}
