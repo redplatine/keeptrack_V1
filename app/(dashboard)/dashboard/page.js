@@ -101,7 +101,8 @@ export default function DashboardPage() {
           const demandesEnAttente = absEnAttente?.filter(a => a.employe_id === e.id).length || 0
           const { data: avatarData } = supabase.storage.from('avatars').getPublicUrl(`${e.id}/avatar`)
           return { ...e, solde, demandesEnAttente, avatarUrl: avatarData.publicUrl }
-        })
+        }).sort((a, b) => a.nom.localeCompare(b.nom, 'fr')) // ← tri alphabétique stable
+
         setEquipe(equipeData)
       } else {
         const { data: soldesData } = await supabase.from('soldes_conges').select('*').eq('employe_id', emp.id).eq('annee', annee).single()
@@ -142,9 +143,7 @@ export default function DashboardPage() {
       <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{
           width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
-          // Bordeaux clair, cohérent avec la sidebar
-          background: '#F2E6E9',
-          display: 'flex', alignItems: 'center',
+          background: '#F2E6E9', display: 'flex', alignItems: 'center',
           justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: '#6B2F42'
         }}>
           {initiales}
@@ -162,14 +161,12 @@ export default function DashboardPage() {
       {/* VUE MANAGER */}
       {isManager && (
         <div>
-          {/* Quick stats */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-            <QuickStat label="Salariés"            value={equipe.length}                                      icon="👥" bg="#F0EDE9" />
+            <QuickStat label="Salariés"            value={equipe.length}                                       icon="👥" bg="#F0EDE9" />
             <QuickStat label="Demandes en attente" value={equipe.reduce((a, e) => a + e.demandesEnAttente, 0)} icon="⏳" bg="#FFFBEB" />
-            <QuickStat label="Année en cours"      value={new Date().getFullYear()}                           icon="📆" bg="#F0FDF4" />
+            <QuickStat label="Année en cours"      value={new Date().getFullYear()}                            icon="📆" bg="#F0FDF4" />
           </div>
 
-          {/* Tableau */}
           <div style={{
             background: 'white', borderRadius: '16px',
             border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -190,7 +187,6 @@ export default function DashboardPage() {
                     { label: 'Matricule', align: 'left' },
                     { label: 'Salarié',   align: 'left' },
                     { label: 'Poste',     align: 'left' },
-                    // Bordeaux désaturé pour CP N-1, bleu charte pour CP N, vert charte pour RTT
                     { label: 'CP N-1',    align: 'center', color: '#8B4A5A' },
                     { label: 'CP N',      align: 'center', color: '#4F7EF7' },
                     { label: 'RTT',       align: 'center', color: '#16A34A' },
@@ -227,7 +223,6 @@ export default function DashboardPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
                           width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-                          // Avatar fallback bordeaux clair
                           background: '#F2E6E9', overflow: 'hidden',
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
