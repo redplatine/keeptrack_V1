@@ -83,7 +83,6 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => { fetchRole() }, [])
 
-  // Fermer le panneau si clic extérieur
   useEffect(() => {
     const handler = (e) => {
       if (clocheRef.current && !clocheRef.current.contains(e.target)) {
@@ -123,22 +122,18 @@ export default function DashboardLayout({ children }) {
     setMessagesOuverts(count || 0)
   }
 
-  // Realtime — absences
   const setupRealtimeAbsences = () => {
     supabase.channel('absences-notifs')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'absences' }, () => {
         fetchAbsencesEnAttente()
-      })
-      .subscribe()
+      }).subscribe()
   }
 
-  // Realtime — messages
   const setupRealtimeMessages = () => {
     supabase.channel('messages-notifs')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
         fetchMessagesOuverts()
-      })
-      .subscribe()
+      }).subscribe()
   }
 
   const handleLogout = async () => {
@@ -147,14 +142,14 @@ export default function DashboardLayout({ children }) {
   }
 
   const navItems = [
-    { href: '/profil',    label: 'Mon profil',        roles: ['salarie'] },
-    { href: '/dashboard', label: 'Tableau de bord',   roles: ['admin', 'manager'] },
-    { href: '/calendrier',label: 'Calendrier',         roles: ['admin', 'manager', 'salarie'] },
-    { href: '/employes',  label: 'Employés',           roles: ['admin'] },
-    { href: '/absences',  label: 'Absences',           roles: ['admin', 'manager', 'salarie'], badge: absencesEnAttente },
-    { href: '/messages',  label: 'Messages',           roles: ['admin'], badge: messagesOuverts },
-    { href: '/contact',   label: 'Contact & Support',  roles: ['salarie'] },
-    { href: '/societe',   label: 'Société',            roles: ['admin', 'manager', 'salarie'] },
+    { href: '/profil',     label: 'Mon profil',       roles: ['salarie'] },
+    { href: '/dashboard',  label: 'Tableau de bord',  roles: ['admin', 'manager'] },
+    { href: '/calendrier', label: 'Calendrier',        roles: ['admin', 'manager', 'salarie'] },
+    { href: '/employes',   label: 'Employés',          roles: ['admin'] },
+    { href: '/absences',   label: 'Absences',          roles: ['admin', 'manager', 'salarie'], badge: absencesEnAttente },
+    { href: '/messages',   label: 'Messages',          roles: ['admin'], badge: messagesOuverts },
+    { href: '/contact',    label: 'Contact & Support', roles: ['salarie'] },
+    { href: '/societe',    label: 'Société',           roles: ['admin', 'manager', 'salarie'] },
   ]
 
   const navFiltres = navItems.filter(item => role && item.roles.includes(role))
@@ -165,7 +160,7 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="min-h-screen flex" style={{ background: '#F7F5F3', fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
-      {/* SIDEBAR */}
+      {/* ===================== SIDEBAR ===================== */}
       <div className="w-60 flex flex-col fixed h-full" style={{
         background: SIDEBAR.bg,
         borderRight: `1px solid ${SIDEBAR.border}`,
@@ -193,7 +188,7 @@ export default function DashboardLayout({ children }) {
               </div>
             </div>
 
-            {/* CLOCHE — visible admin/manager uniquement */}
+            {/* CLOCHE */}
             {isAdmin && (
               <div ref={clocheRef} style={{ position: 'relative' }}>
                 <button
@@ -212,7 +207,6 @@ export default function DashboardLayout({ children }) {
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
-                  {/* Badge total */}
                   {totalNotifs > 0 && (
                     <span style={{
                       position: 'absolute', top: '-4px', right: '-4px',
@@ -235,89 +229,6 @@ export default function DashboardLayout({ children }) {
                     border: '1px solid #E8E4E0', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                     zIndex: 100, overflow: 'hidden',
                   }}>
-{/* MAIN CONTENT */}
-      <div className="flex-1 ml-60 overflow-auto min-h-screen" style={{ background: '#F7F5F3' }}>
-
-        {/* BANDEAU DÉCORATIF */}
-        <div style={{
-          position: 'relative', height: '72px', overflow: 'hidden',
-          background: 'linear-gradient(135deg, #4A2330 0%, #6B2F42 60%, #8B4A5A 100%)',
-          flexShrink: 0,
-        }}>
-          {/* Motifs SVG incrustés — formes géométriques transparentes style Outlook */}
-          <svg
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.13 }}
-            xmlns="http://www.w3.org/2000/svg"
-            preserveAspectRatio="xMidYMid slice"
-          >
-            {/* Cercles */}
-            <circle cx="40"  cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="40"  cy="20" r="14" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="130" cy="55" r="20" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="280" cy="10" r="32" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="280" cy="10" r="18" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="500" cy="60" r="24" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="720" cy="15" r="30" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="720" cy="15" r="15" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="920" cy="50" r="22" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="1100" cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="1300" cy="45" r="20" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="1500" cy="10" r="34" fill="none" stroke="white" strokeWidth="1.5"/>
-
-            {/* Hexagones */}
-            <polygon points="90,5 108,15 108,35 90,45 72,35 72,15"   fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="200,20 214,28 214,44 200,52 186,44 186,28" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="370,0 388,10 388,30 370,40 352,30 352,10" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="600,15 618,25 618,45 600,55 582,45 582,25" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="820,5 838,15 838,35 820,45 802,35 802,15"  fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1020,20 1038,30 1038,50 1020,60 1002,50 1002,30" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1200,0 1218,10 1218,30 1200,40 1182,30 1182,10" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1400,10 1418,20 1418,40 1400,50 1382,40 1382,20" fill="none" stroke="white" strokeWidth="1.5"/>
-
-            {/* Carrés / losanges */}
-            <rect x="155" y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(15 168 21)"/>
-            <rect x="320" y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(30 331 41)"/>
-            <rect x="450" y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(20 464 19)"/>
-            <rect x="660" y="35" width="20" height="20" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(45 670 45)"/>
-            <rect x="860" y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(10 873 21)"/>
-            <rect x="1060" y="28" width="24" height="24" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(35 1072 40)"/>
-            <rect x="1250" y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(22 1264 19)"/>
-            <rect x="1450" y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(40 1461 41)"/>
-
-            {/* Triangles */}
-            <polygon points="240,50 256,22 272,50" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="410,15 426,42 394,42" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="550,5  566,32 534,32" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="750,40 766,12 782,40" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="980,8  996,35 964,35" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1150,45 1166,18 1182,45" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1350,5  1366,32 1334,32" fill="none" stroke="white" strokeWidth="1.5"/>
-
-            {/* Croix / plus */}
-            <line x1="340" y1="8"  x2="340" y2="24" stroke="white" strokeWidth="1.5"/>
-            <line x1="332" y1="16" x2="348" y2="16" stroke="white" strokeWidth="1.5"/>
-            <line x1="640" y1="5"  x2="640" y2="21" stroke="white" strokeWidth="1.5"/>
-            <line x1="632" y1="13" x2="648" y2="13" stroke="white" strokeWidth="1.5"/>
-            <line x1="880" y1="30" x2="880" y2="46" stroke="white" strokeWidth="1.5"/>
-            <line x1="872" y1="38" x2="888" y2="38" stroke="white" strokeWidth="1.5"/>
-            <line x1="1120" y1="8"  x2="1120" y2="24" stroke="white" strokeWidth="1.5"/>
-            <line x1="1112" y1="16" x2="1128" y2="16" stroke="white" strokeWidth="1.5"/>
-            <line x1="1460" y1="50" x2="1460" y2="66" stroke="white" strokeWidth="1.5"/>
-            <line x1="1452" y1="58" x2="1468" y2="58" stroke="white" strokeWidth="1.5"/>
-          </svg>
-
-          {/* Dégradé de fondu bas pour transition douce vers le contenu */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: '32px',
-            background: 'linear-gradient(to bottom, transparent, #F7F5F3)'
-          }} />
-        </div>
-
-        {children}
-      </div>
-
-
-                    {/* Header panneau */}
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid #F0EDE9' }}>
                       <p style={{ fontSize: '12px', fontWeight: 700, color: '#1C1917', margin: 0 }}>Notifications</p>
                       <p style={{ fontSize: '11px', color: '#A8A29E', margin: '2px 0 0' }}>
@@ -325,9 +236,7 @@ export default function DashboardLayout({ children }) {
                       </p>
                     </div>
 
-                    {/* Ligne absences */}
-                    <Link href="/absences" onClick={() => setClochePaneau(false)}
-                      style={{ textDecoration: 'none' }}>
+                    <Link href="/absences" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
                       <div style={{
                         padding: '12px 16px', display: 'flex', alignItems: 'center',
                         justifyContent: 'space-between', cursor: 'pointer',
@@ -357,10 +266,8 @@ export default function DashboardLayout({ children }) {
                       </div>
                     </Link>
 
-                    {/* Ligne messages — admin seulement */}
                     {role === 'admin' && (
-                      <Link href="/messages" onClick={() => setClochePaneau(false)}
-                        style={{ textDecoration: 'none' }}>
+                      <Link href="/messages" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
                         <div style={{
                           padding: '12px 16px', display: 'flex', alignItems: 'center',
                           justifyContent: 'space-between', cursor: 'pointer',
@@ -391,7 +298,6 @@ export default function DashboardLayout({ children }) {
                       </Link>
                     )}
 
-                    {/* Footer — tout à jour */}
                     {totalNotifs === 0 && (
                       <div style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{ fontSize: '20px' }}>✅</span>
@@ -408,14 +314,9 @@ export default function DashboardLayout({ children }) {
         {/* NAV */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
           <p style={{
-            fontSize: '10px', fontWeight: 600,
-            color: SIDEBAR.textMuted,
-            letterSpacing: '0.08em',
-            padding: '4px 10px 8px',
-            textTransform: 'uppercase'
-          }}>
-            Navigation
-          </p>
+            fontSize: '10px', fontWeight: 600, color: SIDEBAR.textMuted,
+            letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase'
+          }}>Navigation</p>
 
           {navFiltres.map((item) => {
             const isActive = pathname === item.href
@@ -429,18 +330,8 @@ export default function DashboardLayout({ children }) {
                   fontWeight: isActive ? 600 : 400,
                   fontSize: '13.5px',
                 }}
-                onMouseEnter={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = SIDEBAR.hoverBg
-                    e.currentTarget.style.color = '#F0E8EA'
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = SIDEBAR.textPrimary
-                  }
-                }}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = SIDEBAR.hoverBg; e.currentTarget.style.color = '#F0E8EA' } }}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = SIDEBAR.textPrimary } }}
               >
                 <div className="flex items-center gap-2.5">
                   <span style={{ color: isActive ? SIDEBAR.activeColor : SIDEBAR.iconMuted }}>
@@ -450,10 +341,8 @@ export default function DashboardLayout({ children }) {
                 </div>
                 {item.badge > 0 && (
                   <span style={{
-                    background: 'rgba(220,38,38,0.25)',
-                    color: '#FCA5A5',
-                    fontSize: '11px', fontWeight: 700,
-                    padding: '1px 7px', borderRadius: '20px'
+                    background: 'rgba(220,38,38,0.25)', color: '#FCA5A5',
+                    fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px'
                   }}>
                     {item.badge}
                   </span>
@@ -481,14 +370,8 @@ export default function DashboardLayout({ children }) {
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2.5 rounded-xl transition-all duration-150"
             style={{ padding: '8px 10px', color: SIDEBAR.textMuted, fontSize: '13.5px', fontWeight: 400 }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = SIDEBAR.logoutHover
-              e.currentTarget.style.color = '#FCA5A5'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = SIDEBAR.textMuted
-            }}
+            onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.logoutHover; e.currentTarget.style.color = '#FCA5A5' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = SIDEBAR.textMuted }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -498,9 +381,79 @@ export default function DashboardLayout({ children }) {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 ml-60 overflow-auto min-h-screen" style={{ background: '#F7F5F3' }}>
-        {children}
+      {/* ===================== MAIN CONTENT ===================== */}
+      <div className="flex-1 ml-60 min-h-screen" style={{ background: '#F7F5F3', display: 'flex', flexDirection: 'column' }}>
+
+        {/* BANDEAU DÉCORATIF */}
+        <div style={{
+          position: 'relative', height: '72px', overflow: 'hidden', flexShrink: 0,
+          background: 'linear-gradient(135deg, #4A2330 0%, #6B2F42 60%, #8B4A5A 100%)',
+        }}>
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.13 }}
+            xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+            {/* Cercles */}
+            <circle cx="40"   cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="40"   cy="20" r="14" fill="none" stroke="white" strokeWidth="1"/>
+            <circle cx="130"  cy="55" r="20" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="280"  cy="10" r="32" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="280"  cy="10" r="18" fill="none" stroke="white" strokeWidth="1"/>
+            <circle cx="500"  cy="60" r="24" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="720"  cy="15" r="30" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="720"  cy="15" r="15" fill="none" stroke="white" strokeWidth="1"/>
+            <circle cx="920"  cy="50" r="22" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="1100" cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
+            <circle cx="1300" cy="45" r="20" fill="none" stroke="white" strokeWidth="1"/>
+            <circle cx="1500" cy="10" r="34" fill="none" stroke="white" strokeWidth="1.5"/>
+            {/* Hexagones */}
+            <polygon points="90,5 108,15 108,35 90,45 72,35 72,15"            fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="200,20 214,28 214,44 200,52 186,44 186,28"        fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="370,0 388,10 388,30 370,40 352,30 352,10"         fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="600,15 618,25 618,45 600,55 582,45 582,25"        fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="820,5 838,15 838,35 820,45 802,35 802,15"         fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="1020,20 1038,30 1038,50 1020,60 1002,50 1002,30"  fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="1200,0 1218,10 1218,30 1200,40 1182,30 1182,10"   fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="1400,10 1418,20 1418,40 1400,50 1382,40 1382,20"  fill="none" stroke="white" strokeWidth="1.5"/>
+            {/* Carrés */}
+            <rect x="155"  y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(15 168 21)"/>
+            <rect x="320"  y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(30 331 41)"/>
+            <rect x="450"  y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(20 464 19)"/>
+            <rect x="660"  y="35" width="20" height="20" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(45 670 45)"/>
+            <rect x="860"  y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(10 873 21)"/>
+            <rect x="1060" y="28" width="24" height="24" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(35 1072 40)"/>
+            <rect x="1250" y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(22 1264 19)"/>
+            <rect x="1450" y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(40 1461 41)"/>
+            {/* Triangles */}
+            <polygon points="240,50 256,22 272,50"   fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="410,15 426,42 394,42"   fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="550,5 566,32 534,32"    fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="750,40 766,12 782,40"   fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="980,8 996,35 964,35"    fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="1150,45 1166,18 1182,45" fill="none" stroke="white" strokeWidth="1.5"/>
+            <polygon points="1350,5 1366,32 1334,32"  fill="none" stroke="white" strokeWidth="1.5"/>
+            {/* Croix */}
+            <line x1="340"  y1="8"  x2="340"  y2="24" stroke="white" strokeWidth="1.5"/>
+            <line x1="332"  y1="16" x2="348"  y2="16" stroke="white" strokeWidth="1.5"/>
+            <line x1="640"  y1="5"  x2="640"  y2="21" stroke="white" strokeWidth="1.5"/>
+            <line x1="632"  y1="13" x2="648"  y2="13" stroke="white" strokeWidth="1.5"/>
+            <line x1="880"  y1="30" x2="880"  y2="46" stroke="white" strokeWidth="1.5"/>
+            <line x1="872"  y1="38" x2="888"  y2="38" stroke="white" strokeWidth="1.5"/>
+            <line x1="1120" y1="8"  x2="1120" y2="24" stroke="white" strokeWidth="1.5"/>
+            <line x1="1112" y1="16" x2="1128" y2="16" stroke="white" strokeWidth="1.5"/>
+            <line x1="1460" y1="50" x2="1460" y2="66" stroke="white" strokeWidth="1.5"/>
+            <line x1="1452" y1="58" x2="1468" y2="58" stroke="white" strokeWidth="1.5"/>
+          </svg>
+          {/* Fondu bas */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px',
+            background: 'linear-gradient(to bottom, transparent, #F7F5F3)'
+          }} />
+        </div>
+
+        {/* CONTENU PAGE */}
+        <div style={{ flex: 1 }}>
+          {children}
+        </div>
+
       </div>
     </div>
   )
