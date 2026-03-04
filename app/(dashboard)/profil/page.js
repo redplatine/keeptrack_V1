@@ -119,7 +119,6 @@ export default function ProfilPage() {
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '20px',
         padding: '24px 28px', display: 'flex', alignItems: 'center', gap: '24px'
       }}>
-        {/* Avatar */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -128,16 +127,14 @@ export default function ProfilPage() {
               background: avatarError || !avatar ? '#F2E6E9' : 'transparent',
               border: '2px dashed #E8E4E0', overflow: 'hidden',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', position: 'relative', flexShrink: 0,
-              transition: 'border-color 0.15s',
+              cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'border-color 0.15s',
             }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#8B4A5A'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E8E4E0'}>
             {uploadLoading ? (
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
             ) : avatar && !avatarError ? (
-              <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={() => setAvatarError(true)} />
+              <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarError(true)} />
             ) : (
               <span style={{ fontSize: '28px', fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
             )}
@@ -160,7 +157,6 @@ export default function ProfilPage() {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
         </div>
 
-        {/* Infos rapides */}
         <div style={{ flex: 1 }}>
           <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1C1917', margin: '0 0 4px', letterSpacing: '-0.3px' }}>
             {employe.prenom} {employe.nom}
@@ -183,17 +179,26 @@ export default function ProfilPage() {
                 {employe.matricule}
               </span>
             )}
+            {employe.forfait_jours && (
+              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB' }}>
+                Forfait jours
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+
         {/* BLOC IDENTITÉ */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <SectionTitle>Identité</SectionTitle>
           <InfoField label="Nom complet" value={`${employe.prenom} ${employe.nom}`} />
           <InfoField label="Email" value={employe.email} />
           <InfoField label="Date de naissance" value={employe.date_naissance} />
+          <InfoField label="Lieu de naissance" value={employe.lieu_naissance} />
+          <InfoField label="CP de naissance" value={employe.cp_naissance} />
+          <InfoField label="N° Sécurité sociale" value={employe.numero_secu} mono />
           <InfoField label="Adresse" value={adresse} />
         </div>
 
@@ -204,6 +209,11 @@ export default function ProfilPage() {
           <InfoField label="Département" value={employe.departement} />
           <InfoField label="Date d'entrée" value={employe.date_entree} />
           <InfoField label="Temps de travail" value={employe.temps_travail} />
+          <InfoField label="Forfait jours" value={employe.forfait_jours ? 'Oui' : 'Non'} />
+          {employe.forfait_jours
+            ? <InfoField label="Jours annuels" value={employe.nb_jours_annuels ? `${employe.nb_jours_annuels} jours` : null} />
+            : <InfoField label="Heures par semaine" value={employe.nb_heures_semaine ? `${employe.nb_heures_semaine}h / semaine` : null} />
+          }
           <InfoField label="RTT annuel" value={employe.rtt_annuel ? `${employe.rtt_annuel} jours` : null} />
           <InfoField label="Salaire brut annuel" value={salaire} />
         </div>

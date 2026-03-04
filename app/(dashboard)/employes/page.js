@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import * as XLSX from 'xlsx'
 
 function getAvatarUrl(id) {
   const { data } = supabase.storage.from('avatars').getPublicUrl(`${id}/avatar`)
@@ -53,6 +54,8 @@ const FORM_DEFAULT = {
   temps_travail: 'Temps plein', date_entree: '', salaire_brut: '',
   numero_voie: '', nom_rue: '', code_postal: '', ville: '',
   date_naissance: '', rtt_annuel: 0,
+  numero_secu: '', cp_naissance: '', lieu_naissance: '',
+  forfait_jours: false, nb_jours_annuels: '', nb_heures_semaine: '',
 }
 
 export default function EmployesPage() {
@@ -62,11 +65,15 @@ export default function EmployesPage() {
   const [employeSelectionne, setEmployeSelectionne] = useState(null)
   const [invitationEnvoyee, setInvitationEnvoyee] = useState(false)
   const [invitationLoading, setInvitationLoading] = useState(false)
+  const [currentRole, setCurrentRole] = useState(null)
   const [form, setForm] = useState(FORM_DEFAULT)
 
   useEffect(() => { fetchEmployes() }, [])
 
   const fetchEmployes = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: me } = await supabase.from('employes').select('role').eq('email', user.email).single()
+    setCurrentRole(me?.role)
     const { data, error } = await supabase.from('employes').select('*').order('nom')
     if (!error) setEmployes(data)
     setLoading(false)
@@ -89,46 +96,26 @@ export default function EmployesPage() {
 
   const recalculerRTT = async (employeId, nouveauRttAnnuel) => {
     const annee = new Date().getFullYear()
-    const { data: solde } = await supabase
-      .from('soldes_conges')
-      .select('*')
-      .eq('employe_id', employeId)
-      .eq('annee', annee)
-      .single()
-
+    const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', employeId).eq('annee', annee).single()
     if (!solde) return
-
-    const { data: emp } = await supabase
-      .from('employes')
-      .select('date_entree')
-      .eq('id', employeId)
-      .single()
-
+    const { data: emp } = await supabase.from('employes').select('date_entree').eq('id', employeId).single()
     if (!emp?.date_entree) return
-
     const aujourd_hui = new Date()
     const dateEntree = new Date(emp.date_entree)
     const dateEntreeMois = new Date(dateEntree.getFullYear(), dateEntree.getMonth(), 1)
     const moisEnCours = new Date(aujourd_hui.getFullYear(), aujourd_hui.getMonth(), 1)
-
     let rttAcquis = 0
     if (nouveauRttAnnuel > 0 && dateEntreeMois <= moisEnCours) {
       const moisAnciennete = Math.min(
-        (aujourd_hui.getFullYear() - dateEntree.getFullYear()) * 12
-        + aujourd_hui.getMonth() - dateEntree.getMonth() + 1,
-        1
+        (aujourd_hui.getFullYear() - dateEntree.getFullYear()) * 12 + aujourd_hui.getMonth() - dateEntree.getMonth() + 1, 1
       )
       rttAcquis = Math.round(moisAnciennete * (nouveauRttAnnuel / 12) * 100) / 100
     }
-
-    // Ajouter le force RTT existant
     const rttForce = solde.rtt_force || 0
     const rttAcquisTotal = rttAcquis + rttForce
-
     await supabase.from('soldes_conges').update({
       rtt_acquis: rttAcquisTotal,
       rtt_solde: Math.max(0, rttAcquisTotal - (solde.rtt_pris || 0)),
-      // CP et recup intouchés
     }).eq('employe_id', employeId).eq('annee', annee)
   }
 
@@ -142,30 +129,28 @@ export default function EmployesPage() {
       numero_voie: form.numero_voie || null, nom_rue: form.nom_rue || null,
       code_postal: form.code_postal || null, ville: form.ville || null,
       date_naissance: form.date_naissance || null, rtt_annuel: form.rtt_annuel || 0,
+      numero_secu: form.numero_secu || null,
+      cp_naissance: form.cp_naissance || null,
+      lieu_naissance: form.lieu_naissance || null,
+      forfait_jours: form.forfait_jours || false,
+      nb_jours_annuels: form.forfait_jours ? (parseInt(form.nb_jours_annuels) || null) : null,
+      nb_heures_semaine: !form.forfait_jours ? (parseFloat(form.nb_heures_semaine) || null) : null,
     }
 
     if (employeSelectionne) {
       const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
       if (error) { alert('Erreur modification : ' + error.message); return }
-
       const dateEntreeChangee = form.date_entree !== employeSelectionne.date_entree
       const rttAnnuelChange = parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)
-
       if (dateEntreeChangee) {
-        // Date d'entrée changée → recalcul global (CP + RTT)
-        // La fonction SQL préserve les _force grâce au fix du ON CONFLICT
         await supabase.rpc('calculer_acquisitions')
       } else if (rttAnnuelChange) {
-        // Seulement RTT annuel changé → recalcul RTT ciblé, CP intouchés
         await recalculerRTT(employeSelectionne.id, parseFloat(form.rtt_annuel) || 0)
       }
-
     } else {
       const { data: newEmp, error } = await supabase.from('employes').insert([formNettoye]).select().single()
       if (error) { alert('Erreur création : ' + error.message); return }
       await supabase.rpc('calculer_acquisitions')
-
-      // Reprise des compteurs à la création
       const cp_n1 = parseFloat(form.cp_n1_reprise) || 0
       const cp_n  = parseFloat(form.cp_n_reprise)  || 0
       const rtt   = parseFloat(form.rtt_reprise)   || 0
@@ -191,7 +176,6 @@ export default function EmployesPage() {
         }
       }
     }
-
     setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); fetchEmployes()
   }
 
@@ -205,6 +189,11 @@ export default function EmployesPage() {
       salaire_brut: emp.salaire_brut || '', numero_voie: emp.numero_voie || '',
       nom_rue: emp.nom_rue || '', code_postal: emp.code_postal || '', ville: emp.ville || '',
       date_naissance: emp.date_naissance || '', rtt_annuel: emp.rtt_annuel || 0,
+      numero_secu: emp.numero_secu || '', cp_naissance: emp.cp_naissance || '',
+      lieu_naissance: emp.lieu_naissance || '',
+      forfait_jours: emp.forfait_jours || false,
+      nb_jours_annuels: emp.nb_jours_annuels || '',
+      nb_heures_semaine: emp.nb_heures_semaine || '',
     })
     setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -217,11 +206,52 @@ export default function EmployesPage() {
     setShowForm(false); setEmployeSelectionne(null); resetForm(); fetchEmployes()
   }
 
+  const handleExportExcel = () => {
+    const data = employes.map(emp => ({
+      'Matricule':             emp.matricule || '',
+      'Nom':                   emp.nom || '',
+      'Prénom':                emp.prenom || '',
+      'Email':                 emp.email || '',
+      'Date de naissance':     emp.date_naissance || '',
+      'N° Sécurité sociale':   emp.numero_secu || '',
+      'CP de naissance':       emp.cp_naissance || '',
+      'Lieu de naissance':     emp.lieu_naissance || '',
+      'Numéro de voie':        emp.numero_voie || '',
+      'Nom de rue':            emp.nom_rue || '',
+      'Code postal':           emp.code_postal || '',
+      'Ville':                 emp.ville || '',
+      'Poste':                 emp.poste || '',
+      'Département':           emp.departement || '',
+      'Type de contrat':       emp.type_contrat || '',
+      'Statut':                emp.statut || '',
+      'Temps de travail':      emp.temps_travail || '',
+      'Date d\'entrée':        emp.date_entree || '',
+      'RTT annuel':            emp.rtt_annuel || 0,
+      'Forfait jours':         emp.forfait_jours ? 'Oui' : 'Non',
+      'Nb jours annuels':      emp.forfait_jours ? (emp.nb_jours_annuels || '') : '',
+      'Nb heures / semaine':   !emp.forfait_jours ? (emp.nb_heures_semaine || '') : '',
+      'Salaire brut annuel':   emp.salaire_brut || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 16 },
+      { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 },
+      { wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 16 },
+      { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
+      { wch: 16 }, { wch: 18 }, { wch: 16 },
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Employés')
+    XLSX.writeFile(wb, `employes_${new Date().toISOString().split('T')[0]}.xlsx`)
+  }
+
   const F = (key, extra = {}) => ({
     value: form[key],
     onChange: e => setForm({ ...form, [key]: e.target.value }),
     style: { ...S.input, ...extra }
   })
+
+  const isAdmin = currentRole === 'admin'
 
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
@@ -231,15 +261,32 @@ export default function EmployesPage() {
         <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
           {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
         </p>
-        <button onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
-          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
-          onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
-          onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Ajouter un employé
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {isAdmin && (
+            <button onClick={handleExportExcel} style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '9px 16px', borderRadius: '10px', border: '1px solid #E8E4E0',
+              background: 'white', color: '#44403C', fontSize: '13.5px', fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exporter Excel
+            </button>
+          )}
+          <button onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
+            onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Ajouter un employé
+          </button>
+        </div>
       </div>
 
       {/* FORMULAIRE */}
@@ -279,6 +326,12 @@ export default function EmployesPage() {
               <div><label style={S.label}>Prénom *</label><input required {...F('prenom')} /></div>
               <div><label style={S.label}>Email *</label><input required type="email" {...F('email')} /></div>
               <div><label style={S.label}>Date de naissance</label><input type="date" {...F('date_naissance')} /></div>
+              <div><label style={S.label}>Lieu de naissance</label><input {...F('lieu_naissance')} placeholder="Ex: Paris" /></div>
+              <div><label style={S.label}>CP de naissance</label><input {...F('cp_naissance')} placeholder="Ex: 75001" /></div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={S.label}>Numéro de sécurité sociale</label>
+                <input {...F('numero_secu')} placeholder="Ex: 1 85 05 75 123 456 78" />
+              </div>
 
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Adresse</div>
               <div><label style={S.label}>Numéro de voie</label><input {...F('numero_voie')} /></div>
@@ -308,6 +361,36 @@ export default function EmployesPage() {
                   <option>Temps plein</option><option>Temps partiel</option>
                 </select>
               </div>
+
+              {/* FORFAIT JOURS */}
+              <div>
+                <label style={S.label}>Salarié au forfait jours</label>
+                <select
+                  value={form.forfait_jours ? 'oui' : 'non'}
+                  onChange={e => setForm({ ...form, forfait_jours: e.target.value === 'oui', nb_jours_annuels: '', nb_heures_semaine: '' })}
+                  style={{ ...S.input, cursor: 'pointer' }}>
+                  <option value="non">Non</option>
+                  <option value="oui">Oui</option>
+                </select>
+              </div>
+              <div>
+                {form.forfait_jours ? (
+                  <>
+                    <label style={S.label}>Nombre de jours annuels</label>
+                    <input type="number" value={form.nb_jours_annuels}
+                      onChange={e => setForm({ ...form, nb_jours_annuels: e.target.value })}
+                      placeholder="Ex: 218" style={S.input} />
+                  </>
+                ) : (
+                  <>
+                    <label style={S.label}>Nombre d'heures par semaine</label>
+                    <input type="number" step="0.5" value={form.nb_heures_semaine}
+                      onChange={e => setForm({ ...form, nb_heures_semaine: e.target.value })}
+                      placeholder="Ex: 35" style={S.input} />
+                  </>
+                )}
+              </div>
+
               <div><label style={S.label}>RTT annuel</label><input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" /></div>
               <div><label style={S.label}>Salaire brut annuel (€)</label><input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" /></div>
 
