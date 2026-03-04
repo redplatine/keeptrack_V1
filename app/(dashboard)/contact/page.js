@@ -61,17 +61,14 @@ export default function ContactPage() {
   const nbOuverts = messages.filter(m => m.statut === 'Ouvert').length
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
       <div style={{ maxWidth: '760px' }}>
 
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Contact & Support</h1>
-            <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
-              {nbOuverts > 0 ? `${nbOuverts} message(s) en attente de réponse` : 'Échangez avec votre service RH'}
-            </p>
-          </div>
+        {/* ACTIONS — sans titre */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
+            {nbOuverts > 0 ? `${nbOuverts} message(s) en attente de réponse` : 'Échangez avec votre service RH'}
+          </p>
           <button onClick={() => { setShowForm(!showForm); setEnvoye(false); setErreur(null) }} style={{
             display: 'flex', alignItems: 'center', gap: '7px',
             padding: '9px 16px', borderRadius: '10px', border: 'none',
@@ -80,7 +77,9 @@ export default function ContactPage() {
           }}
             onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
             onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
             Nouveau message
           </button>
         </div>
@@ -111,7 +110,9 @@ export default function ContactPage() {
                 background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
                 padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px'
               }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
                 {erreur}
               </div>
             )}
@@ -134,7 +135,7 @@ export default function ContactPage() {
                 <textarea required value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
                   rows={5} placeholder="Décrivez votre demande…"
                   style={{ ...S.input, resize: 'vertical', lineHeight: 1.6 }}
-                  onFocus={e => e.target.style.borderColor = '#4F7EF7'}
+                  onFocus={e => e.target.style.borderColor = '#8B4A5A'}
                   onBlur={e => e.target.style.borderColor = '#E8E4E0'} />
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -145,7 +146,9 @@ export default function ContactPage() {
                   color: loading ? '#A8A29E' : 'white',
                   fontSize: '13.5px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
                 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
                   {loading ? 'Envoi…' : 'Envoyer'}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
@@ -197,7 +200,6 @@ export default function ContactPage() {
 
                   {/* Corps */}
                   <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
                     {/* Message envoyé */}
                     <div>
                       <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 6px' }}>
@@ -208,13 +210,13 @@ export default function ContactPage() {
                       </div>
                     </div>
 
-                    {/* Réponse RH */}
+                    {/* Réponse RH — bordeaux au lieu de indigo */}
                     {msg.reponse_admin ? (
                       <div>
                         <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 6px' }}>
                           Réponse du service RH
                         </p>
-                        <div style={{ background: '#EEF2FF', borderRadius: '12px', padding: '12px 16px', border: '1px solid #C7D2FE', borderLeft: '3px solid #4F46E5' }}>
+                        <div style={{ background: '#F9EEF1', borderRadius: '12px', padding: '12px 16px', border: '1px solid #DDB8C2', borderLeft: '3px solid #8B4A5A' }}>
                           <p style={{ fontSize: '13.5px', color: '#44403C', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.reponse_admin}</p>
                           {msg.repondu_at && (
                             <p style={{ fontSize: '11px', color: '#A8A29E', margin: '8px 0 0' }}>{formatDate(msg.repondu_at)}</p>
@@ -238,7 +240,6 @@ export default function ContactPage() {
             })}
           </div>
         )}
-
       </div>
     </div>
   )

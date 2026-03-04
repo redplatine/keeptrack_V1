@@ -11,7 +11,7 @@ const TYPE_CONFIG = {
   'Congé sans solde':    { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B' },
   'Événement familial':  { bg: '#FDF4FF', color: '#A21CAF', dot: '#C026D3' },
   'Maternité':           { bg: '#FCE7F3', color: '#BE185D', dot: '#EC4899' },
-  'Paternité':           { bg: '#F9EEF1', color: '#6B2F42', dot: '#8B4A5A' }, // bordeaux — remplace indigo/violet
+  'Paternité':           { bg: '#F9EEF1', color: '#6B2F42', dot: '#8B4A5A' },
 }
 
 const JOURS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -21,7 +21,6 @@ export default function CalendrierPage() {
   const [employe, setEmploye] = useState(null)
   const [moisActuel, setMoisActuel] = useState(new Date())
   const [loading, setLoading] = useState(true)
-  const [tooltip, setTooltip] = useState(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -29,7 +28,6 @@ export default function CalendrierPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
     setEmploye(emp)
-
     let absData = []
     if (emp.role === 'salarie') {
       const { data } = await supabase.from('absences').select('*').eq('employe_id', emp.id).neq('statut', 'Refusée')
@@ -38,7 +36,6 @@ export default function CalendrierPage() {
       const { data } = await supabase.from('absences').select('*').neq('statut', 'Refusée')
       absData = data || []
     }
-
     const { data: employesData } = await supabase.from('employes').select('id, nom, prenom')
     absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
     setAbsences(absData)
@@ -77,26 +74,17 @@ export default function CalendrierPage() {
   const isManager = employe?.role !== 'salarie'
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      {/* Spinner bordeaux */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Calendrier</h1>
-          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
-            {isManager ? "Absences de l'équipe" : "Vos absences"}
-          </p>
-        </div>
-
-        {/* Navigation mois */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* ACTIONS — navigation mois uniquement, sans titre */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={() => setMoisActuel(new Date(annee, mois - 1, 1))}
             style={{
               width: '36px', height: '36px', borderRadius: '10px',
@@ -158,7 +146,6 @@ export default function CalendrierPage() {
         background: 'white', borderRadius: '16px',
         border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
       }}>
-
         {/* En-têtes jours */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #F0EDE9' }}>
           {JOURS_FR.map((j, i) => (
@@ -186,7 +173,6 @@ export default function CalendrierPage() {
                 borderBottom: '1px solid #FAF8F6',
                 background: !jour ? '#FAFAF9' : estWeekend ? '#FAF8F6' : 'white',
                 position: 'relative',
-                // Aujourd'hui : outline bordeaux au lieu du bleu
                 outline: estAujourdhui ? '2px solid #8B4A5A' : 'none',
                 outlineOffset: '-2px',
                 borderRadius: estAujourdhui ? '4px' : '0',
@@ -198,14 +184,12 @@ export default function CalendrierPage() {
                         fontSize: '13px', fontWeight: estAujourdhui ? 700 : 400,
                         color: estAujourdhui ? 'white' : estWeekend ? '#C4B5A5' : '#44403C',
                         width: '24px', height: '24px', borderRadius: '8px',
-                        // Pastille aujourd'hui : bordeaux
                         background: estAujourdhui ? '#8B4A5A' : 'transparent',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {jour.getDate()}
                       </span>
                     </div>
-
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       {absencesDuJour.slice(0, 3).map((abs, i) => {
                         const conf = TYPE_CONFIG[abs.type_absence] || { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' }
@@ -245,16 +229,14 @@ export default function CalendrierPage() {
         const absencesDuMois = absences.filter(abs => {
           const debut = new Date(abs.date_debut)
           const fin = new Date(abs.date_fin || abs.date_debut)
-          return debut.getMonth() === mois && debut.getFullYear() === annee ||
-                 fin.getMonth() === mois && fin.getFullYear() === annee
+          return (debut.getMonth() === mois && debut.getFullYear() === annee) ||
+                 (fin.getMonth() === mois && fin.getFullYear() === annee)
         })
         if (absencesDuMois.length === 0) return null
-
         const parType = absencesDuMois.reduce((acc, abs) => {
           acc[abs.type_absence] = (acc[abs.type_absence] || 0) + 1
           return acc
         }, {})
-
         return (
           <div style={{
             marginTop: '20px', background: 'white', borderRadius: '16px',

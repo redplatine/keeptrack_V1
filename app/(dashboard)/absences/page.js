@@ -29,10 +29,10 @@ const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 
 const TYPE_CONFIG = {
   'CP':                  { bg: '#EFF6FF', color: '#2563EB' },
-  'RTT':                 { bg: '#F9EEF1', color: '#6B2F42' },   // bordeaux — remplace indigo
+  'RTT':                 { bg: '#F9EEF1', color: '#6B2F42' },
   'Maladie':             { bg: '#FEF2F2', color: '#DC2626' },
   'Maternité':           { bg: '#FDF4FF', color: '#A21CAF' },
-  'Paternité':           { bg: '#F2E6E9', color: '#8B4A5A' },   // bordeaux clair — remplace vert (déjà pris par statut Approuvée)
+  'Paternité':           { bg: '#F2E6E9', color: '#8B4A5A' },
   'Congé sans solde':    { bg: '#F0EDE9', color: '#78716C' },
   'Événement familial':  { bg: '#FFFBEB', color: '#B45309' },
   'Absence injustifiée': { bg: '#FEF2F2', color: '#991B1B' },
@@ -94,7 +94,10 @@ const S = {
     padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6',
     outline: 'none', color: '#1C1917', fontFamily: 'inherit', cursor: 'pointer',
   },
-  label: { fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  label: {
+    fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px',
+    display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em',
+  },
 }
 
 export default function AbsencesPage() {
@@ -216,8 +219,10 @@ export default function AbsencesPage() {
     if (abs) {
       const { data: empData } = await supabase.from('employes').select('email, prenom').eq('id', abs.employe_id).single()
       if (empData?.email) {
-        await fetch('/api/notify-absence', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ emailSalarie: empData.email, prenomSalarie: empData.prenom, typeAbsence: abs.type_absence, dateDebut: abs.date_debut, dateFin: abs.date_fin || abs.date_debut, nbJours: abs.nb_jours, statut }) })
+        await fetch('/api/notify-absence', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emailSalarie: empData.email, prenomSalarie: empData.prenom, typeAbsence: abs.type_absence, dateDebut: abs.date_debut, dateFin: abs.date_fin || abs.date_debut, nbJours: abs.nb_jours, statut })
+        })
       }
     }
     fetchData()
@@ -266,18 +271,14 @@ export default function AbsencesPage() {
   const nbFiltresActifs = [filtreMois, filtreStatut, filtreEmployeId].filter(Boolean).length
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Absences</h1>
-          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
-            {absencesFiltrees.length} demande(s)
-            {/* Indicateur filtre : bordeaux au lieu du bleu */}
-            {nbFiltresActifs > 0 && <span style={{ color: '#8B4A5A', marginLeft: '6px' }}>· {nbFiltresActifs} filtre(s) actif(s)</span>}
-          </p>
-        </div>
+      {/* ACTIONS — boutons + compteur, sans titre (géré par le layout) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
+          {absencesFiltrees.length} demande(s)
+          {nbFiltresActifs > 0 && <span style={{ color: '#8B4A5A', marginLeft: '6px' }}>· {nbFiltresActifs} filtre(s) actif(s)</span>}
+        </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           {isManager && (
             <button onClick={handleExportExcel} style={{
@@ -288,7 +289,9 @@ export default function AbsencesPage() {
             }}
               onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
               onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
               Exporter Excel
             </button>
           )}
@@ -300,7 +303,9 @@ export default function AbsencesPage() {
           }}
             onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
             onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
             Nouvelle demande
           </button>
         </div>
@@ -345,7 +350,9 @@ export default function AbsencesPage() {
                 background: '#FAF8F6', color: '#78716C', fontSize: '13px',
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
               Réinitialiser
             </button>
           )}
@@ -366,14 +373,15 @@ export default function AbsencesPage() {
               background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px',
               padding: '12px 16px', marginBottom: '16px', color: '#DC2626', fontSize: '13.5px'
             }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}>
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
               {alerteForm}
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
               {isManager && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={S.label}>Employé concerné</label>
@@ -383,33 +391,28 @@ export default function AbsencesPage() {
                   </select>
                 </div>
               )}
-
               <div>
                 <label style={S.label}>Type d'absence</label>
                 <select value={form.type_absence} onChange={e => setForm({...form, type_absence: e.target.value, demi_journee: false})} style={{ ...S.input, cursor: 'pointer' }}>
                   {typesDisponibles.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '22px' }}>
                 <input type="checkbox" id="demi_journee" checked={form.demi_journee}
                   onChange={e => setForm({...form, demi_journee: e.target.checked, date_fin: ''})}
                   style={{ width: '16px', height: '16px', accentColor: '#8B4A5A', cursor: 'pointer' }} />
                 <label htmlFor="demi_journee" style={{ fontSize: '13.5px', color: '#44403C', cursor: 'pointer', fontWeight: 500 }}>Demi-journée</label>
               </div>
-
               <div>
                 <label style={S.label}>{form.demi_journee ? 'Date' : 'Date de début'}</label>
                 <input required type="date" value={form.date_debut} onChange={e => setForm({...form, date_debut: e.target.value})} style={S.input} />
               </div>
-
               {!form.demi_journee && (
                 <div>
                   <label style={S.label}>Date de fin</label>
                   <input required type="date" value={form.date_fin} min={form.date_debut} onChange={e => setForm({...form, date_fin: e.target.value})} style={S.input} />
                 </div>
               )}
-
               {(form.date_debut && (form.date_fin || form.demi_journee)) && (
                 <div style={{
                   gridColumn: '1 / -1', background: '#F0EDE9', borderRadius: '12px',
@@ -435,14 +438,12 @@ export default function AbsencesPage() {
                   </div>
                 </div>
               )}
-
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={S.label}>Commentaire (optionnel)</label>
                 <textarea value={form.commentaire_salarie} onChange={e => setForm({...form, commentaire_salarie: e.target.value})}
                   rows={2} placeholder="Précisez si nécessaire…"
                   style={{ ...S.input, resize: 'none', lineHeight: 1.5 }} />
               </div>
-
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px' }}>
                 <button type="submit" style={{
                   padding: '10px 20px', borderRadius: '10px', border: 'none',
@@ -470,7 +471,9 @@ export default function AbsencesPage() {
         boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflow: 'hidden'
       }}>
         {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#A8A29E' }}>Chargement…</div>
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+          </div>
         ) : absencesFiltrees.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '10px' }}>📭</div>

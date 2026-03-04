@@ -68,6 +68,20 @@ const ROLE_CONFIG = {
   salarie: { label: 'Salarié',        bg: 'rgba(134,239,172,0.18)', color: '#A7F3C0' },
 }
 
+// Titres et sous-titres par page
+const PAGE_META = {
+  '/dashboard':  { title: 'Tableau de bord',   sub: (p, r) => r === 'admin' || r === 'manager' ? "Vue d'ensemble de votre équipe" : 'Votre espace personnel' },
+  '/profil':     { title: 'Mon profil',         sub: () => 'Vos informations personnelles et contractuelles' },
+  '/calendrier': { title: 'Calendrier',          sub: () => 'Visualisez les absences de votre équipe' },
+  '/employes':   { title: 'Employés',            sub: () => 'Gérez les membres de votre équipe' },
+  '/absences':   { title: 'Absences',            sub: () => 'Gérez et suivez les demandes d\'absence' },
+  '/messages':   { title: 'Messages & Support',  sub: () => 'Consultez et répondez aux messages' },
+  '/contact':    { title: 'Contact & Support',   sub: () => 'Envoyez un message à votre service RH' },
+  '/societe':    { title: 'Société',             sub: () => 'Informations de votre entreprise' },
+}
+
+const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
 export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -157,14 +171,19 @@ export default function DashboardLayout({ children }) {
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
   const isAdmin = role === 'admin' || role === 'manager'
 
+  const pageMeta = PAGE_META[pathname]
+  const pageTitle = pageMeta?.title || ''
+  const pageSub   = pageMeta?.sub ? pageMeta.sub(prenom, role) : ''
+
   return (
-    <div className="min-h-screen flex" style={{ background: '#F7F5F3', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div className="min-h-screen flex" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
       {/* ===================== SIDEBAR ===================== */}
       <div className="w-60 flex flex-col fixed h-full" style={{
         background: SIDEBAR.bg,
         borderRight: `1px solid ${SIDEBAR.border}`,
-        boxShadow: '2px 0 16px rgba(0,0,0,0.12)'
+        boxShadow: '2px 0 16px rgba(0,0,0,0.12)',
+        zIndex: 10,
       }}>
 
         {/* LOGO + CLOCHE */}
@@ -235,7 +254,6 @@ export default function DashboardLayout({ children }) {
                         {totalNotifs > 0 ? `${totalNotifs} en attente` : 'Tout est à jour'}
                       </p>
                     </div>
-
                     <Link href="/absences" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
                       <div style={{
                         padding: '12px 16px', display: 'flex', alignItems: 'center',
@@ -265,7 +283,6 @@ export default function DashboardLayout({ children }) {
                         </span>
                       </div>
                     </Link>
-
                     {role === 'admin' && (
                       <Link href="/messages" onClick={() => setClochePaneau(false)} style={{ textDecoration: 'none' }}>
                         <div style={{
@@ -297,7 +314,6 @@ export default function DashboardLayout({ children }) {
                         </div>
                       </Link>
                     )}
-
                     {totalNotifs === 0 && (
                       <div style={{ padding: '14px 16px', textAlign: 'center' }}>
                         <span style={{ fontSize: '20px' }}>✅</span>
@@ -317,7 +333,6 @@ export default function DashboardLayout({ children }) {
             fontSize: '10px', fontWeight: 600, color: SIDEBAR.textMuted,
             letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase'
           }}>Navigation</p>
-
           {navFiltres.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -366,7 +381,6 @@ export default function DashboardLayout({ children }) {
               <p style={{ fontSize: '11px', color: SIDEBAR.textMuted, lineHeight: 1.3 }}>{roleConfig.label}</p>
             </div>
           </div>
-
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2.5 rounded-xl transition-all duration-150"
             style={{ padding: '8px 10px', color: SIDEBAR.textMuted, fontSize: '13.5px', fontWeight: 400 }}
@@ -382,75 +396,110 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* ===================== MAIN CONTENT ===================== */}
-      <div className="flex-1 ml-60 min-h-screen" style={{ background: '#F7F5F3', display: 'flex', flexDirection: 'column' }}>
+      <div className="flex-1 ml-60 min-h-screen" style={{
+        display: 'flex', flexDirection: 'column', position: 'relative',
+        background: '#F7F5F3',
+      }}>
 
-        {/* BANDEAU DÉCORATIF */}
-        <div style={{
-          position: 'relative', height: '72px', overflow: 'hidden', flexShrink: 0,
-          background: 'linear-gradient(135deg, #4A2330 0%, #6B2F42 60%, #8B4A5A 100%)',
-        }}>
-          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.13 }}
-            xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-            {/* Cercles */}
-            <circle cx="40"   cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="40"   cy="20" r="14" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="130"  cy="55" r="20" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="280"  cy="10" r="32" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="280"  cy="10" r="18" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="500"  cy="60" r="24" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="720"  cy="15" r="30" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="720"  cy="15" r="15" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="920"  cy="50" r="22" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="1100" cy="20" r="28" fill="none" stroke="white" strokeWidth="1.5"/>
-            <circle cx="1300" cy="45" r="20" fill="none" stroke="white" strokeWidth="1"/>
-            <circle cx="1500" cy="10" r="34" fill="none" stroke="white" strokeWidth="1.5"/>
-            {/* Hexagones */}
-            <polygon points="90,5 108,15 108,35 90,45 72,35 72,15"            fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="200,20 214,28 214,44 200,52 186,44 186,28"        fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="370,0 388,10 388,30 370,40 352,30 352,10"         fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="600,15 618,25 618,45 600,55 582,45 582,25"        fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="820,5 838,15 838,35 820,45 802,35 802,15"         fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1020,20 1038,30 1038,50 1020,60 1002,50 1002,30"  fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1200,0 1218,10 1218,30 1200,40 1182,30 1182,10"   fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1400,10 1418,20 1418,40 1400,50 1382,40 1382,20"  fill="none" stroke="white" strokeWidth="1.5"/>
-            {/* Carrés */}
-            <rect x="155"  y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(15 168 21)"/>
-            <rect x="320"  y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(30 331 41)"/>
-            <rect x="450"  y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(20 464 19)"/>
-            <rect x="660"  y="35" width="20" height="20" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(45 670 45)"/>
-            <rect x="860"  y="8"  width="26" height="26" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(10 873 21)"/>
-            <rect x="1060" y="28" width="24" height="24" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(35 1072 40)"/>
-            <rect x="1250" y="5"  width="28" height="28" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(22 1264 19)"/>
-            <rect x="1450" y="30" width="22" height="22" fill="none" stroke="white" strokeWidth="1.5" transform="rotate(40 1461 41)"/>
-            {/* Triangles */}
-            <polygon points="240,50 256,22 272,50"   fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="410,15 426,42 394,42"   fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="550,5 566,32 534,32"    fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="750,40 766,12 782,40"   fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="980,8 996,35 964,35"    fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1150,45 1166,18 1182,45" fill="none" stroke="white" strokeWidth="1.5"/>
-            <polygon points="1350,5 1366,32 1334,32"  fill="none" stroke="white" strokeWidth="1.5"/>
-            {/* Croix */}
-            <line x1="340"  y1="8"  x2="340"  y2="24" stroke="white" strokeWidth="1.5"/>
-            <line x1="332"  y1="16" x2="348"  y2="16" stroke="white" strokeWidth="1.5"/>
-            <line x1="640"  y1="5"  x2="640"  y2="21" stroke="white" strokeWidth="1.5"/>
-            <line x1="632"  y1="13" x2="648"  y2="13" stroke="white" strokeWidth="1.5"/>
-            <line x1="880"  y1="30" x2="880"  y2="46" stroke="white" strokeWidth="1.5"/>
-            <line x1="872"  y1="38" x2="888"  y2="38" stroke="white" strokeWidth="1.5"/>
-            <line x1="1120" y1="8"  x2="1120" y2="24" stroke="white" strokeWidth="1.5"/>
-            <line x1="1112" y1="16" x2="1128" y2="16" stroke="white" strokeWidth="1.5"/>
-            <line x1="1460" y1="50" x2="1460" y2="66" stroke="white" strokeWidth="1.5"/>
-            <line x1="1452" y1="58" x2="1468" y2="58" stroke="white" strokeWidth="1.5"/>
-          </svg>
-          {/* Fondu bas */}
+        {/* FOND C3 — SVG pleine page, fixe en haut, s'évanouit vers le bas */}
+        <svg style={{
+          position: 'fixed', top: 0, left: '240px', right: 0,
+          width: 'calc(100% - 240px)', height: '100vh',
+          pointerEvents: 'none', zIndex: 0,
+        }} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYTop slice">
+          <defs>
+            <linearGradient id="bgFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#4A2330" stopOpacity="0.72"/>
+              <stop offset="22%"  stopColor="#4A2330" stopOpacity="0.28"/>
+              <stop offset="45%"  stopColor="#4A2330" stopOpacity="0.07"/>
+              <stop offset="100%" stopColor="#4A2330" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="shapeR" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#4A2330" stopOpacity="0.85"/>
+              <stop offset="100%" stopColor="#4A2330" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="shapeL" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#6B2F42" stopOpacity="0.75"/>
+              <stop offset="100%" stopColor="#6B2F42" stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+
+          {/* Fond dégradé global */}
+          <rect width="100%" height="100%" fill="url(#bgFade)"/>
+
+          {/* Cercles concentriques droite */}
+          <circle cx="95%" cy="-20" r="320" fill="none" stroke="url(#shapeR)" strokeWidth="2.5"/>
+          <circle cx="95%" cy="-20" r="230" fill="none" stroke="url(#shapeR)" strokeWidth="2"/>
+          <circle cx="95%" cy="-20" r="150" fill="none" stroke="url(#shapeR)" strokeWidth="1.5"/>
+          <circle cx="95%" cy="-20" r="80"  fill="none" stroke="url(#shapeR)" strokeWidth="1"/>
+
+          {/* Cercles concentriques gauche */}
+          <circle cx="5%"  cy="-15" r="280" fill="none" stroke="url(#shapeL)" strokeWidth="2.5"/>
+          <circle cx="5%"  cy="-15" r="190" fill="none" stroke="url(#shapeL)" strokeWidth="2"/>
+          <circle cx="5%"  cy="-15" r="110" fill="none" stroke="url(#shapeL)" strokeWidth="1.5"/>
+          <circle cx="5%"  cy="-15" r="50"  fill="none" stroke="url(#shapeL)" strokeWidth="1"/>
+
+          {/* Cercle centre */}
+          <circle cx="50%" cy="8"   r="160" fill="none" stroke="#8B4A5A" strokeWidth="1.5" opacity="0.5"/>
+          <circle cx="50%" cy="8"   r="90"  fill="none" stroke="#8B4A5A" strokeWidth="1"   opacity="0.35"/>
+
+          {/* Hexagones */}
+          <polygon points="62%,0 70%,4% 66%,11% 58%,11% 54%,4%"  fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
+          <polygon points="22%,-1% 27%,5% 17%,5%"                 fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
+          <polygon points="77%,1% 82%,8% 72%,8%"                  fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.58"/>
+          <polygon points="39%,-1% 43%,4% 35%,4%"                 fill="none" stroke="#6B2F42" strokeWidth="2"   opacity="0.52"/>
+
+          {/* Carrés tournés */}
+          <rect x="3%"  y="0.5%" width="64" height="64" fill="none" stroke="#6B2F42" strokeWidth="2.2" opacity="0.58" transform="rotate(18 60 55)"/>
+          <rect x="35%" y="0.8%" width="46" height="46" fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.52" transform="rotate(30 400 38)"/>
+          <rect x="53%" y="2%"   width="38" height="38" fill="none" stroke="#8B4A5A" strokeWidth="1.8" opacity="0.45" transform="rotate(12 560 38)"/>
+          <rect x="83%" y="1%"   width="42" height="42" fill="none" stroke="#4A2330" strokeWidth="1.8" opacity="0.42" transform="rotate(25 840 36)"/>
+
+          {/* Croix */}
+          <line x1="16%" y1="-1%" x2="16%" y2="7%"  strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+          <line x1="13%" y1="3%"  x2="19%" y2="3%"  strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+          <line x1="43%" y1="-1%" x2="43%" y2="6%"  strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
+          <line x1="40%" y1="2.5%" x2="46%" y2="2.5%" strokeWidth="2" stroke="#4A2330" opacity="0.58"/>
+          <line x1="70%" y1="0%"  x2="70%" y2="7%"  strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
+          <line x1="67%" y1="3.5%" x2="73%" y2="3.5%" strokeWidth="2" stroke="#4A2330" opacity="0.52"/>
+          <line x1="87%" y1="1%"  x2="87%" y2="8%"  strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
+          <line x1="84%" y1="4.5%" x2="90%" y2="4.5%" strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
+        </svg>
+
+        {/* HEADER PAGE — titre blanc sur le fond bordeaux */}
+        {pageMeta && (
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: '36px',
-            background: 'linear-gradient(to bottom, transparent, #F7F5F3)'
-          }} />
-        </div>
+            position: 'relative', zIndex: 2,
+            padding: '32px 40px 24px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '13px', flexShrink: 0,
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '15px', fontWeight: 700, color: 'white',
+              }}>
+                {initiales || '?'}
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: '22px', fontWeight: 700, color: 'white',
+                  margin: 0, letterSpacing: '-0.3px',
+                  textShadow: '0 1px 6px rgba(0,0,0,0.15)',
+                }}>
+                  {pageTitle}
+                </h1>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', margin: '3px 0 0' }}>
+                  {pageSub} · {dateStr}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CONTENU PAGE */}
-        <div style={{ flex: 1 }}>
+        <div style={{ position: 'relative', zIndex: 2, flex: 1 }}>
           {children}
         </div>
 

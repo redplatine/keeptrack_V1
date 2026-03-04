@@ -16,7 +16,7 @@ function InfoField({ label, value, mono = false }) {
   )
 }
 
-function SoldeCard({ label, acquis, pris, solde, accent, bg }) {
+function SoldeCard({ label, acquis, pris, solde, accent }) {
   const pct = acquis > 0 ? Math.min(100, Math.round((pris / acquis) * 100)) : 0
   return (
     <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #E8E4E0', overflow: 'hidden' }}>
@@ -50,7 +50,7 @@ function SoldeCard({ label, acquis, pris, solde, accent, bg }) {
 
 function SectionTitle({ children }) {
   return (
-    <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0EDE9' }}>
       <h2 style={{ fontSize: '13px', fontWeight: 600, color: '#44403C', margin: 0 }}>{children}</h2>
     </div>
   )
@@ -97,8 +97,7 @@ export default function ProfilPage() {
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      {/* Spinner bordeaux */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
@@ -112,13 +111,7 @@ export default function ProfilPage() {
   const salaire = employe.salaire_brut ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(employe.salaire_brut) : null
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
-
-      {/* HEADER */}
-      <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Mon profil</h1>
-        <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>Vos informations personnelles et contractuelles</p>
-      </div>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
       {/* CARTE IDENTITÉ RAPIDE */}
       <div style={{
@@ -155,7 +148,10 @@ export default function ProfilPage() {
             }}
               onMouseEnter={e => e.currentTarget.style.opacity = 1}
               onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
             </div>
           </div>
           <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>
@@ -172,7 +168,6 @@ export default function ProfilPage() {
           <p style={{ fontSize: '14px', color: '#78716C', margin: '0 0 2px' }}>{employe.poste || '—'}</p>
           <p style={{ fontSize: '13px', color: '#A8A29E', margin: '0 0 12px' }}>{employe.email}</p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {/* Badge statut — bordeaux */}
             <span style={{
               fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
               background: employe.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
@@ -193,7 +188,6 @@ export default function ProfilPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-
         {/* BLOC IDENTITÉ */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <SectionTitle>Identité</SectionTitle>
@@ -223,21 +217,9 @@ export default function ProfilPage() {
             <p style={{ color: '#A8A29E', fontSize: '14px', margin: 0 }}>Aucun solde disponible pour cette année.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              <SoldeCard
-                label="Congés Payés N-1"
-                acquis={soldes.cp_n1_acquis} pris={soldes.cp_n1_pris} solde={soldes.cp_n1_solde}
-                accent="#8B4A5A" bg="#F9EEF1"
-              />
-              <SoldeCard
-                label="Congés Payés N"
-                acquis={soldes.cp_n_acquis} pris={soldes.cp_n_pris} solde={soldes.cp_n_solde}
-                accent="#4F7EF7" bg="#EFF6FF"
-              />
-              <SoldeCard
-                label="RTT"
-                acquis={soldes.rtt_acquis} pris={soldes.rtt_pris} solde={soldes.rtt_solde}
-                accent="#16A34A" bg="#F0FDF4"
-              />
+              <SoldeCard label="Congés Payés N-1" acquis={soldes.cp_n1_acquis} pris={soldes.cp_n1_pris} solde={soldes.cp_n1_solde} accent="#8B4A5A" />
+              <SoldeCard label="Congés Payés N"   acquis={soldes.cp_n_acquis}  pris={soldes.cp_n_pris}  solde={soldes.cp_n_solde}  accent="#4F7EF7" />
+              <SoldeCard label="RTT"               acquis={soldes.rtt_acquis}   pris={soldes.rtt_pris}   solde={soldes.rtt_solde}   accent="#16A34A" />
             </div>
           )}
         </div>

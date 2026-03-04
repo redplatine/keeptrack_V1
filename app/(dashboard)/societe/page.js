@@ -59,14 +59,12 @@ export default function SocietePage() {
     e.preventDefault()
     await supabase.from('societe').update(form).eq('id', societe.id)
     setSociete({ ...societe, ...form })
-    setEditing(false)
-    setSuccess(true)
+    setEditing(false); setSuccess(true)
     setTimeout(() => setSuccess(false), 3000)
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-      {/* Spinner bordeaux */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
@@ -74,14 +72,10 @@ export default function SocietePage() {
   const adresse = [societe?.numero_voie, societe?.nom_rue, societe?.code_postal, societe?.ville].filter(Boolean).join(' ') || null
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Société</h1>
-          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>Informations de votre entreprise</p>
-        </div>
+      {/* ACTIONS — sans titre */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '20px' }}>
         {role === 'admin' && !editing && (
           <button onClick={() => setEditing(true)} style={{
             display: 'flex', alignItems: 'center', gap: '7px',
@@ -91,7 +85,10 @@ export default function SocietePage() {
           }}
             onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
             onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
             Modifier
           </button>
         )}
@@ -155,62 +152,47 @@ export default function SocietePage() {
           <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 24px' }}>
             Modifier les informations
           </h2>
-
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gap: '16px' }}>
-
-              <div style={{
-                fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
-                letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9'
-              }}>Informations légales</div>
-
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9' }}>
+                Informations légales
+              </div>
               <div>
                 <label style={S.label}>Raison sociale</label>
-                <input value={form.raison_sociale} onChange={e => setForm({ ...form, raison_sociale: e.target.value })}
-                  placeholder="Ex: KeepTrack SAS" style={S.input} />
+                <input value={form.raison_sociale} onChange={e => setForm({ ...form, raison_sociale: e.target.value })} placeholder="Ex: KeepTrack SAS" style={S.input} />
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={S.label}>SIRET</label>
-                  <input value={form.siret} onChange={e => setForm({ ...form, siret: e.target.value })}
-                    placeholder="Ex: 123 456 789 00010" style={{ ...S.input, fontFamily: 'monospace' }} />
+                  <input value={form.siret} onChange={e => setForm({ ...form, siret: e.target.value })} placeholder="Ex: 123 456 789 00010" style={{ ...S.input, fontFamily: 'monospace' }} />
                 </div>
                 <div>
                   <label style={S.label}>Code NAF</label>
-                  <input value={form.code_naf} onChange={e => setForm({ ...form, code_naf: e.target.value })}
-                    placeholder="Ex: 6201Z" style={{ ...S.input, fontFamily: 'monospace' }} />
+                  <input value={form.code_naf} onChange={e => setForm({ ...form, code_naf: e.target.value })} placeholder="Ex: 6201Z" style={{ ...S.input, fontFamily: 'monospace' }} />
                 </div>
               </div>
 
-              <div style={{
-                fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
-                letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9', marginTop: '8px'
-              }}>Adresse</div>
-
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9', marginTop: '8px' }}>
+                Adresse
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px' }}>
                 <div>
                   <label style={S.label}>N° voie</label>
-                  <input value={form.numero_voie} onChange={e => setForm({ ...form, numero_voie: e.target.value })}
-                    placeholder="12" style={S.input} />
+                  <input value={form.numero_voie} onChange={e => setForm({ ...form, numero_voie: e.target.value })} placeholder="12" style={S.input} />
                 </div>
                 <div>
                   <label style={S.label}>Nom de rue</label>
-                  <input value={form.nom_rue} onChange={e => setForm({ ...form, nom_rue: e.target.value })}
-                    placeholder="Rue de la Paix" style={S.input} />
+                  <input value={form.nom_rue} onChange={e => setForm({ ...form, nom_rue: e.target.value })} placeholder="Rue de la Paix" style={S.input} />
                 </div>
               </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px' }}>
                 <div>
                   <label style={S.label}>Code postal</label>
-                  <input value={form.code_postal} onChange={e => setForm({ ...form, code_postal: e.target.value })}
-                    placeholder="75001" style={S.input} />
+                  <input value={form.code_postal} onChange={e => setForm({ ...form, code_postal: e.target.value })} placeholder="75001" style={S.input} />
                 </div>
                 <div>
                   <label style={S.label}>Ville</label>
-                  <input value={form.ville} onChange={e => setForm({ ...form, ville: e.target.value })}
-                    placeholder="Paris" style={S.input} />
+                  <input value={form.ville} onChange={e => setForm({ ...form, ville: e.target.value })} placeholder="Paris" style={S.input} />
                 </div>
               </div>
 
@@ -232,12 +214,10 @@ export default function SocietePage() {
                   Annuler
                 </button>
               </div>
-
             </div>
           </form>
         </div>
       )}
-
     </div>
   )
 }

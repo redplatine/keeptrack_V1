@@ -12,11 +12,9 @@ function Avatar({ id, prenom, nom, size = 36 }) {
   const [error, setError] = useState(false)
   const url = getAvatarUrl(id)
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
-
   return (
     <div style={{
       width: size, height: size, borderRadius: '10px', flexShrink: 0,
-      // Bordeaux clair au lieu de violet
       background: '#F2E6E9', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
@@ -32,7 +30,7 @@ function Avatar({ id, prenom, nom, size = 36 }) {
 }
 
 const CONTRAT_CONFIG = {
-  'CDI':        { bg: '#F9EEF1', color: '#6B2F42' }, // bordeaux — remplace indigo
+  'CDI':        { bg: '#F9EEF1', color: '#6B2F42' },
   'CDD':        { bg: '#FFFBEB', color: '#B45309' },
   'Alternance': { bg: '#F0FDF4', color: '#16A34A' },
   'Stage':      { bg: '#F0EDE9', color: '#78716C' },
@@ -182,16 +180,13 @@ export default function EmployesPage() {
   })
 
   return (
-    <div style={{ padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F7F5F3', minHeight: '100vh' }}>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>Employés</h1>
-          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
-            {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
-          </p>
-        </div>
+      {/* ACTIONS — sans titre */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
+          {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
+        </p>
         <button onClick={() => { setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm(); setShowForm(!showForm) }}
           style={{
             display: 'flex', alignItems: 'center', gap: '7px',
@@ -201,7 +196,9 @@ export default function EmployesPage() {
           }}
           onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
           onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
           Ajouter un employé
         </button>
       </div>
@@ -239,9 +236,7 @@ export default function EmployesPage() {
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
               <div style={S.sectionTitle}>Informations personnelles</div>
-
               <div><label style={S.label}>Matricule</label><input {...F('matricule')} placeholder="Ex: MAT001" /></div>
               <div><label style={S.label}>Nom *</label><input required {...F('nom')} /></div>
               <div><label style={S.label}>Prénom *</label><input required {...F('prenom')} /></div>
@@ -249,14 +244,12 @@ export default function EmployesPage() {
               <div><label style={S.label}>Date de naissance</label><input type="date" {...F('date_naissance')} /></div>
 
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Adresse</div>
-
               <div><label style={S.label}>Numéro de voie</label><input {...F('numero_voie')} /></div>
               <div><label style={S.label}>Nom de rue</label><input {...F('nom_rue')} /></div>
               <div><label style={S.label}>Code postal</label><input {...F('code_postal')} /></div>
               <div><label style={S.label}>Ville</label><input {...F('ville')} /></div>
 
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Contrat & Rémunération</div>
-
               <div><label style={S.label}>Poste</label><input {...F('poste')} /></div>
               <div><label style={S.label}>Département</label><input {...F('departement')} /></div>
               <div><label style={S.label}>Date d'entrée *</label><input required type="date" {...F('date_entree')} /></div>
@@ -284,15 +277,13 @@ export default function EmployesPage() {
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>
                 {employeSelectionne ? 'Modifier les compteurs' : 'Reprise des compteurs (optionnel)'}
               </div>
-
               <div style={{ gridColumn: '1 / -1', marginTop: '-8px', marginBottom: '8px' }}>
-                <p style={{ fontSize: '12px', color: '#A8A29E' }}>
+                <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>
                   {employeSelectionne
                     ? 'Les valeurs saisies seront additionnées aux compteurs existants'
                     : 'À remplir uniquement pour les salariés ayant déjà des compteurs existants'}
                 </p>
               </div>
-
               <div>
                 <label style={S.label}>CP N-1 à ajouter (j)</label>
                 <input type="number" step="0.5" value={form.cp_n1_force}
@@ -309,7 +300,6 @@ export default function EmployesPage() {
                   onChange={e => setForm({ ...form, rtt_force: parseFloat(e.target.value) || 0 })} style={S.input} />
               </div>
 
-              {/* ACTIONS */}
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #F0EDE9' }}>
                 <button type="submit" style={{
                   padding: '10px 20px', borderRadius: '10px', border: 'none',
@@ -339,12 +329,13 @@ export default function EmployesPage() {
                     }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
                     onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
                     Supprimer
                   </button>
                 )}
               </div>
-
             </div>
           </form>
         </div>
@@ -356,7 +347,9 @@ export default function EmployesPage() {
         border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
       }}>
         {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#A8A29E' }}>Chargement…</div>
+          <div style={{ padding: '60px', textAlign: 'center' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+          </div>
         ) : employes.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
@@ -385,16 +378,11 @@ export default function EmployesPage() {
                     style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-
                     <td style={{ padding: '15px 24px' }}>
-                      <span style={{
-                        fontSize: '11px', fontWeight: 600, fontFamily: 'monospace',
-                        background: '#F0EDE9', color: '#78716C', padding: '4px 9px', borderRadius: '6px'
-                      }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'monospace', background: '#F0EDE9', color: '#78716C', padding: '4px 9px', borderRadius: '6px' }}>
                         {emp.matricule || '—'}
                       </span>
                     </td>
-
                     <td style={{ padding: '15px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} />
@@ -404,24 +392,16 @@ export default function EmployesPage() {
                         </div>
                       </div>
                     </td>
-
                     <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.poste || '—'}</td>
-
                     <td style={{ padding: '15px 24px' }}>
-                      <span style={{
-                        fontSize: '12px', fontWeight: 600, padding: '4px 10px',
-                        borderRadius: '6px', background: cc.bg, color: cc.color
-                      }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: cc.bg, color: cc.color }}>
                         {emp.type_contrat}
                       </span>
                     </td>
-
                     <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.date_entree || '—'}</td>
-
                     <td style={{ padding: '15px 24px' }}>
                       <span style={{
                         fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
-                        // Cadre : bordeaux au lieu d'indigo
                         background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
                         color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C',
                       }}>

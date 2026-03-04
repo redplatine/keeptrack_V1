@@ -9,8 +9,8 @@ function StatCard({ label, value, acquis, pris, accent, iconBg }) {
       background: 'white', borderRadius: '16px', padding: '24px',
       border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
     }}>
-      <div className="flex items-center justify-between mb-5">
-        <p style={{ fontSize: '13px', color: '#8C8480', fontWeight: 500 }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <p style={{ fontSize: '13px', color: '#8C8480', fontWeight: 500, margin: 0 }}>{label}</p>
         <div style={{
           width: '36px', height: '36px', borderRadius: '10px', background: iconBg,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -18,23 +18,20 @@ function StatCard({ label, value, acquis, pris, accent, iconBg }) {
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: accent }} />
         </div>
       </div>
-
-      <div className="flex items-end gap-1.5 mb-5">
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', marginBottom: '20px' }}>
         <span style={{ fontSize: '42px', fontWeight: 700, color: '#1C1917', lineHeight: 1 }}>{value ?? '—'}</span>
         <span style={{ fontSize: '16px', color: '#A8A29E', marginBottom: '4px' }}>j</span>
       </div>
-
       <div style={{ borderTop: '1px solid #F0EDE9', paddingTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div style={{ background: '#FAF8F6', borderRadius: '10px', padding: '10px 12px' }}>
-          <p style={{ fontSize: '11px', color: '#A8A29E', marginBottom: '2px' }}>Acquis</p>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#44403C' }}>{acquis ?? '—'} j</p>
+          <p style={{ fontSize: '11px', color: '#A8A29E', marginBottom: '2px', margin: '0 0 2px' }}>Acquis</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#44403C', margin: 0 }}>{acquis ?? '—'} j</p>
         </div>
         <div style={{ background: '#FAF8F6', borderRadius: '10px', padding: '10px 12px' }}>
-          <p style={{ fontSize: '11px', color: '#A8A29E', marginBottom: '2px' }}>Pris</p>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: '#44403C' }}>{pris ?? '—'} j</p>
+          <p style={{ fontSize: '11px', color: '#A8A29E', margin: '0 0 2px' }}>Pris</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#44403C', margin: 0 }}>{pris ?? '—'} j</p>
         </div>
       </div>
-
       {acquis > 0 && (
         <div style={{ marginTop: '12px' }}>
           <div style={{ height: '4px', background: '#F0EDE9', borderRadius: '99px', overflow: 'hidden' }}>
@@ -67,8 +64,8 @@ function QuickStat({ label, value, icon, bg }) {
         {icon}
       </div>
       <div>
-        <p style={{ fontSize: '12px', color: '#A8A29E', fontWeight: 500, marginBottom: '3px' }}>{label}</p>
-        <p style={{ fontSize: '30px', fontWeight: 700, color: '#1C1917', lineHeight: 1 }}>{value}</p>
+        <p style={{ fontSize: '12px', color: '#A8A29E', fontWeight: 500, margin: '0 0 3px' }}>{label}</p>
+        <p style={{ fontSize: '30px', fontWeight: 700, color: '#1C1917', lineHeight: 1, margin: 0 }}>{value}</p>
       </div>
     </div>
   )
@@ -86,23 +83,19 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
     setEmploye(emp)
-
     if (emp) {
       const annee = new Date().getFullYear()
       const isManager = emp.role === 'manager' || emp.role === 'admin'
-
       if (isManager) {
         const { data: employes } = await supabase.from('employes').select('id, nom, prenom, poste, matricule').order('nom')
         const { data: tousLesSoldes } = await supabase.from('soldes_conges').select('*').eq('annee', annee)
         const { data: absEnAttente } = await supabase.from('absences').select('employe_id').eq('statut', 'En attente')
-
         const equipeData = (employes || []).map(e => {
           const solde = tousLesSoldes?.find(s => s.employe_id === e.id)
           const demandesEnAttente = absEnAttente?.filter(a => a.employe_id === e.id).length || 0
           const { data: avatarData } = supabase.storage.from('avatars').getPublicUrl(`${e.id}/avatar`)
           return { ...e, solde, demandesEnAttente, avatarUrl: avatarData.publicUrl }
-        }).sort((a, b) => a.nom.localeCompare(b.nom, 'fr')) // ← tri alphabétique stable
-
+        }).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
         setEquipe(equipeData)
       } else {
         const { data: soldesData } = await supabase.from('soldes_conges').select('*').eq('employe_id', emp.id).eq('annee', annee).single()
@@ -112,51 +105,23 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A',
-            animation: 'spin 0.8s linear infinite', margin: '0 auto 12px'
-          }} />
-          <p style={{ color: '#A8A29E', fontSize: '14px' }}>Chargement…</p>
-        </div>
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '32px', height: '32px', borderRadius: '50%',
+          border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A',
+          animation: 'spin 0.8s linear infinite', margin: '0 auto 12px'
+        }} />
+        <p style={{ color: '#A8A29E', fontSize: '14px' }}>Chargement…</p>
       </div>
-    )
-  }
+    </div>
+  )
 
   const isManager = employe?.role === 'manager' || employe?.role === 'admin'
-  const heure = new Date().getHours()
-  const salutation = heure < 12 ? 'Bonjour' : heure < 18 ? 'Bon après-midi' : 'Bonsoir'
-  const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const initiales = `${employe?.prenom?.[0] || ''}${employe?.nom?.[0] || ''}`.toUpperCase()
 
   return (
-    <div style={{
-      padding: '36px 40px', fontFamily: "'Inter', -apple-system, sans-serif",
-      background: '#F7F5F3', minHeight: '100vh'
-    }}>
-
-      {/* HEADER */}
-      <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div style={{
-          width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
-          background: '#F2E6E9', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: '16px', fontWeight: 700, color: '#6B2F42'
-        }}>
-          {initiales}
-        </div>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1C1917', margin: 0, letterSpacing: '-0.3px' }}>
-            {salutation}, {employe?.prenom} 👋
-          </h1>
-          <p style={{ fontSize: '13px', color: '#A8A29E', marginTop: '3px' }}>
-            {isManager ? "Vue d'ensemble de votre équipe" : "Votre espace personnel"} · {dateStr}
-          </p>
-        </div>
-      </div>
+    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
       {/* VUE MANAGER */}
       {isManager && (
@@ -169,8 +134,7 @@ export default function DashboardPage() {
 
           <div style={{
             background: 'white', borderRadius: '16px',
-            border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            overflow: 'hidden'
+            border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden'
           }}>
             <div style={{ padding: '22px 28px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
