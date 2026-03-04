@@ -12,6 +12,7 @@ const TYPE_CONFIG = {
   'Événement familial':  { bg: '#FDF4FF', color: '#A21CAF', dot: '#C026D3', initBg: '#F5D0FE', initColor: '#86198F' },
   'Maternité':           { bg: '#FCE7F3', color: '#BE185D', dot: '#EC4899', initBg: '#FBCFE8', initColor: '#9D174D' },
   'Paternité':           { bg: '#EFF6FF', color: '#1D4ED8', dot: '#60A5FA', initBg: '#DBEAFE', initColor: '#1E40AF' },
+  'Récupération':        { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B', initBg: '#FEF3C7', initColor: '#92400E' },
 }
 
 const JOURS_FR = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
