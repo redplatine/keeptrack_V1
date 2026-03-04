@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const NAV_ICONS = {
   '/profil': (
@@ -48,7 +48,6 @@ const NAV_ICONS = {
   ),
 }
 
-// Palette bordeaux — subtile, désaturée, mat
 const SIDEBAR = {
   bg:          '#4A2330',
   border:      '#5E2D3C',
@@ -77,8 +76,23 @@ export default function DashboardLayout({ children }) {
   const [nom, setNom] = useState('')
   const [absencesEnAttente, setAbsencesEnAttente] = useState(0)
   const [messagesOuverts, setMessagesOuverts] = useState(0)
+  const [clochePaneau, setClochePaneau] = useState(false)
+  const clocheRef = useRef(null)
+
+  const totalNotifs = absencesEnAttente + messagesOuverts
 
   useEffect(() => { fetchRole() }, [])
+
+  // Fermer le panneau si clic extérieur
+  useEffect(() => {
+    const handler = (e) => {
+      if (clocheRef.current && !clocheRef.current.contains(e.target)) {
+        setClochePaneau(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const fetchRole = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -88,8 +102,14 @@ export default function DashboardLayout({ children }) {
       setRole(emp.role)
       setPrenom(emp.prenom || '')
       setNom(emp.nom || '')
-      if (emp.role === 'admin' || emp.role === 'manager') fetchAbsencesEnAttente()
-      if (emp.role === 'admin') fetchMessagesOuverts()
+      if (emp.role === 'admin' || emp.role === 'manager') {
+        fetchAbsencesEnAttente()
+        setupRealtimeAbsences()
+      }
+      if (emp.role === 'admin') {
+        fetchMessagesOuverts()
+        setupRealtimeMessages()
+      }
     }
   }
 
@@ -101,6 +121,24 @@ export default function DashboardLayout({ children }) {
   const fetchMessagesOuverts = async () => {
     const { count } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('statut', 'Ouvert')
     setMessagesOuverts(count || 0)
+  }
+
+  // Realtime — absences
+  const setupRealtimeAbsences = () => {
+    supabase.channel('absences-notifs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'absences' }, () => {
+        fetchAbsencesEnAttente()
+      })
+      .subscribe()
+  }
+
+  // Realtime — messages
+  const setupRealtimeMessages = () => {
+    supabase.channel('messages-notifs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        fetchMessagesOuverts()
+      })
+      .subscribe()
   }
 
   const handleLogout = async () => {
@@ -122,6 +160,7 @@ export default function DashboardLayout({ children }) {
   const navFiltres = navItems.filter(item => role && item.roles.includes(role))
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.salarie
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
+  const isAdmin = role === 'admin' || role === 'manager'
 
   return (
     <div className="min-h-screen flex" style={{ background: '#F7F5F3', fontFamily: "'Inter', -apple-system, sans-serif" }}>
@@ -133,24 +172,154 @@ export default function DashboardLayout({ children }) {
         boxShadow: '2px 0 16px rgba(0,0,0,0.12)'
       }}>
 
-        {/* LOGO */}
+        {/* LOGO + CLOCHE */}
         <div className="px-5 pt-7 pb-5" style={{ borderBottom: `1px solid ${SIDEBAR.border}` }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: SIDEBAR.logoBg, border: '1px solid rgba(255,255,255,0.12)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SIDEBAR.activeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-                <line x1="8" y1="14" x2="16" y2="14"/>
-                <line x1="8" y1="18" x2="12" y2="18"/>
-              </svg>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: SIDEBAR.logoBg, border: '1px solid rgba(255,255,255,0.12)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={SIDEBAR.activeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <line x1="8" y1="14" x2="16" y2="14"/>
+                  <line x1="8" y1="18" x2="12" y2="18"/>
+                </svg>
+              </div>
+              <div>
+                <h1 className="font-bold leading-tight" style={{ fontSize: '15px', color: '#F0E8EA', letterSpacing: '-0.3px' }}>KeepTrack</h1>
+                <p style={{ fontSize: '11px', color: SIDEBAR.textMuted, lineHeight: 1.3 }}>GTA Specialist App</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold leading-tight" style={{ fontSize: '15px', color: '#F0E8EA', letterSpacing: '-0.3px' }}>KeepTrack</h1>
-              <p style={{ fontSize: '11px', color: SIDEBAR.textMuted, lineHeight: 1.3 }}>GTA Specialist App</p>
-            </div>
+
+            {/* CLOCHE — visible admin/manager uniquement */}
+            {isAdmin && (
+              <div ref={clocheRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setClochePaneau(p => !p)}
+                  style={{
+                    position: 'relative', width: '32px', height: '32px',
+                    borderRadius: '10px', border: 'none', cursor: 'pointer',
+                    background: clochePaneau ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                  onMouseLeave={e => e.currentTarget.style.background = clochePaneau ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={totalNotifs > 0 ? '#F9C7D0' : SIDEBAR.iconMuted} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  {/* Badge total */}
+                  {totalNotifs > 0 && (
+                    <span style={{
+                      position: 'absolute', top: '-4px', right: '-4px',
+                      width: '16px', height: '16px', borderRadius: '50%',
+                      background: '#DC2626', color: 'white',
+                      fontSize: '10px', fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: `2px solid ${SIDEBAR.bg}`,
+                    }}>
+                      {totalNotifs > 9 ? '9+' : totalNotifs}
+                    </span>
+                  )}
+                </button>
+
+                {/* PANNEAU DÉROULANT */}
+                {clochePaneau && (
+                  <div style={{
+                    position: 'absolute', top: '40px', right: '-8px',
+                    width: '220px', background: 'white', borderRadius: '14px',
+                    border: '1px solid #E8E4E0', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    zIndex: 100, overflow: 'hidden',
+                  }}>
+                    {/* Header panneau */}
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #F0EDE9' }}>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: '#1C1917', margin: 0 }}>Notifications</p>
+                      <p style={{ fontSize: '11px', color: '#A8A29E', margin: '2px 0 0' }}>
+                        {totalNotifs > 0 ? `${totalNotifs} en attente` : 'Tout est à jour'}
+                      </p>
+                    </div>
+
+                    {/* Ligne absences */}
+                    <Link href="/absences" onClick={() => setClochePaneau(false)}
+                      style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        padding: '12px 16px', display: 'flex', alignItems: 'center',
+                        justifyContent: 'space-between', cursor: 'pointer',
+                        borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s',
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '13px', fontWeight: 500, color: '#1C1917', margin: 0 }}>Absences</p>
+                            <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>en attente de validation</p>
+                          </div>
+                        </div>
+                        <span style={{
+                          background: absencesEnAttente > 0 ? 'rgba(220,38,38,0.1)' : '#F0EDE9',
+                          color: absencesEnAttente > 0 ? '#DC2626' : '#A8A29E',
+                          fontSize: '12px', fontWeight: 700,
+                          padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center'
+                        }}>
+                          {absencesEnAttente}
+                        </span>
+                      </div>
+                    </Link>
+
+                    {/* Ligne messages — admin seulement */}
+                    {role === 'admin' && (
+                      <Link href="/messages" onClick={() => setClochePaneau(false)}
+                        style={{ textDecoration: 'none' }}>
+                        <div style={{
+                          padding: '12px 16px', display: 'flex', alignItems: 'center',
+                          justifyContent: 'space-between', cursor: 'pointer',
+                          transition: 'background 0.1s',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1C1917', margin: 0 }}>Messages</p>
+                              <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>ouverts sans réponse</p>
+                            </div>
+                          </div>
+                          <span style={{
+                            background: messagesOuverts > 0 ? '#FFFBEB' : '#F0EDE9',
+                            color: messagesOuverts > 0 ? '#B45309' : '#A8A29E',
+                            fontSize: '12px', fontWeight: 700,
+                            padding: '2px 8px', borderRadius: '20px', minWidth: '24px', textAlign: 'center'
+                          }}>
+                            {messagesOuverts}
+                          </span>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* Footer — tout à jour */}
+                    {totalNotifs === 0 && (
+                      <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '20px' }}>✅</span>
+                        <p style={{ fontSize: '12px', color: '#A8A29E', margin: '6px 0 0' }}>Aucune action requise</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
