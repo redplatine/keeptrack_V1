@@ -1,19 +1,34 @@
 'use client'
+
 import { useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-const DECORATIVE_CIRCLES = [
-  { size: 320, top: -80,  left: -80,  opacity: 0.06 },
-  { size: 200, top: 60,   left: 340,  opacity: 0.04 },
-  { size: 150, top: 400,  left: -40,  opacity: 0.05 },
-  { size: 100, top: 520,  left: 380,  opacity: 0.035 },
-  { size: 80,  top: 200,  left: 500,  opacity: 0.04 },
-  { size: 240, top: 480,  left: 260,  opacity: 0.03 },
-]
-
-export default function LoginPreview() {
+export default function LoginPage() {
   const [role, setRole] = useState(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    if (authError) {
+      setError('Email ou mot de passe incorrect')
+      setLoading(false)
+      return
+    }
+
+    const { data: emp } = await supabase.from('employes').select('role').eq('email', email).single()
+    if (emp?.role === 'salarie') router.push('/profil')
+    else router.push('/dashboard')
+  }
 
   return (
     <div style={{
@@ -22,49 +37,64 @@ export default function LoginPreview() {
       padding: '24px', position: 'relative', overflow: 'hidden',
     }}>
 
-      {/* ÉLÉMENTS DÉCORATIFS FOND */}
-      {DECORATIVE_CIRCLES.map((c, i) => (
-        <div key={i} style={{
-          position: 'fixed', width: c.size, height: c.size, borderRadius: '50%',
-          border: `1.5px solid rgba(74,35,48,${c.opacity * 2})`,
-          background: `rgba(74,35,48,${c.opacity})`,
-          top: c.top, left: c.left, pointerEvents: 'none',
-        }} />
-      ))}
+      {/* FOND SVG — même que DashboardLayout mais centré plein écran */}
+      <svg style={{ position: 'fixed', inset: 0, width: '100%', height: '100vh', pointerEvents: 'none', zIndex: 0 }} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYTop slice">
+        <defs>
+          <linearGradient id="bgFade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#4A2330" stopOpacity="0.72"/>
+            <stop offset="22%"  stopColor="#4A2330" stopOpacity="0.28"/>
+            <stop offset="45%"  stopColor="#4A2330" stopOpacity="0.07"/>
+            <stop offset="100%" stopColor="#4A2330" stopOpacity="0"/>
+          </linearGradient>
+          <linearGradient id="shapeR" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#4A2330" stopOpacity="0.85"/>
+            <stop offset="100%" stopColor="#4A2330" stopOpacity="0"/>
+          </linearGradient>
+          <linearGradient id="shapeL" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#6B2F42" stopOpacity="0.75"/>
+            <stop offset="100%" stopColor="#6B2F42" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#bgFade)"/>
+        <circle cx="95%" cy="-20" r="320" fill="none" stroke="url(#shapeR)" strokeWidth="2.5"/>
+        <circle cx="95%" cy="-20" r="230" fill="none" stroke="url(#shapeR)" strokeWidth="2"/>
+        <circle cx="95%" cy="-20" r="150" fill="none" stroke="url(#shapeR)" strokeWidth="1.5"/>
+        <circle cx="95%" cy="-20" r="80"  fill="none" stroke="url(#shapeR)" strokeWidth="1"/>
+        <circle cx="5%"  cy="-15" r="280" fill="none" stroke="url(#shapeL)" strokeWidth="2.5"/>
+        <circle cx="5%"  cy="-15" r="190" fill="none" stroke="url(#shapeL)" strokeWidth="2"/>
+        <circle cx="5%"  cy="-15" r="110" fill="none" stroke="url(#shapeL)" strokeWidth="1.5"/>
+        <circle cx="5%"  cy="-15" r="50"  fill="none" stroke="url(#shapeL)" strokeWidth="1"/>
+        <circle cx="50%" cy="8"   r="160" fill="none" stroke="#8B4A5A" strokeWidth="1.5" opacity="0.5"/>
+        <circle cx="50%" cy="8"   r="90"  fill="none" stroke="#8B4A5A" strokeWidth="1"   opacity="0.35"/>
+        <polygon points="62%,0 70%,4% 66%,11% 58%,11% 54%,4%"  fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
+        <polygon points="22%,-1% 27%,5% 17%,5%"                 fill="none" stroke="#4A2330" strokeWidth="2.5" opacity="0.65"/>
+        <polygon points="77%,1% 82%,8% 72%,8%"                  fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.58"/>
+        <polygon points="39%,-1% 43%,4% 35%,4%"                 fill="none" stroke="#6B2F42" strokeWidth="2"   opacity="0.52"/>
+        <rect x="3%"  y="0.5%" width="64" height="64" fill="none" stroke="#6B2F42" strokeWidth="2.2" opacity="0.58" transform="rotate(18 60 55)"/>
+        <rect x="35%" y="0.8%" width="46" height="46" fill="none" stroke="#4A2330" strokeWidth="2"   opacity="0.52" transform="rotate(30 400 38)"/>
+        <rect x="53%" y="2%"   width="38" height="38" fill="none" stroke="#8B4A5A" strokeWidth="1.8" opacity="0.45" transform="rotate(12 560 38)"/>
+        <rect x="83%" y="1%"   width="42" height="42" fill="none" stroke="#4A2330" strokeWidth="1.8" opacity="0.42" transform="rotate(25 840 36)"/>
+        <line x1="16%" y1="-1%" x2="16%" y2="7%"    strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+        <line x1="13%" y1="3%"  x2="19%" y2="3%"    strokeWidth="2.5" stroke="#4A2330" opacity="0.65"/>
+        <line x1="43%" y1="-1%" x2="43%" y2="6%"    strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
+        <line x1="40%" y1="2.5%" x2="46%" y2="2.5%" strokeWidth="2"   stroke="#4A2330" opacity="0.58"/>
+        <line x1="70%" y1="0%"  x2="70%" y2="7%"    strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
+        <line x1="67%" y1="3.5%" x2="73%" y2="3.5%" strokeWidth="2"   stroke="#4A2330" opacity="0.52"/>
+        <line x1="87%" y1="1%"  x2="87%" y2="8%"    strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
+        <line x1="84%" y1="4.5%" x2="90%" y2="4.5%" strokeWidth="1.8" stroke="#4A2330" opacity="0.48"/>
+      </svg>
 
-      {/* Petits losanges décoratifs */}
-      {[
-        { top: 80,  right: 120, size: 12 },
-        { top: 220, right: 60,  size: 8  },
-        { top: 480, right: 200, size: 10 },
-        { top: 360, left: 80,   size: 8  },
-        { top: 600, left: 300,  size: 14 },
-      ].map((d, i) => (
-        <div key={i} style={{
-          position: 'fixed', width: d.size, height: d.size,
-          background: 'rgba(74,35,48,0.12)',
-          transform: 'rotate(45deg)',
-          top: d.top, right: d.right, left: d.left,
-          pointerEvents: 'none',
-          borderRadius: '2px',
-        }} />
-      ))}
-
-      {/* Lignes décoratives */}
-      <div style={{ position: 'fixed', top: 0, right: 180, width: '1px', height: '35%', background: 'linear-gradient(to bottom, transparent, rgba(74,35,48,0.08), transparent)', pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', bottom: 0, left: 220, width: '1px', height: '30%', background: 'linear-gradient(to top, transparent, rgba(74,35,48,0.08), transparent)', pointerEvents: 'none' }} />
-
-      {/* CARTE PRINCIPALE */}
+      {/* CARTE */}
       <div style={{
         background: 'white', borderRadius: '24px',
         width: '100%', maxWidth: '460px',
         border: '1px solid #E8E4E0',
-        boxShadow: '0 8px 40px rgba(74,35,48,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+        boxShadow: '0 8px 40px rgba(74,35,48,0.12), 0 2px 8px rgba(0,0,0,0.06)',
         position: 'relative', zIndex: 1, overflow: 'hidden',
       }}>
 
-        {/* Bande déco haut */}
-        <div style={{ height: '4px', background: 'linear-gradient(to right, #4A2330, #8B4A5A, #C4849A)', borderRadius: '24px 24px 0 0' }} />
+        {/* Bande dégradée haut */}
+        <div style={{ height: '4px', background: 'linear-gradient(to right, #4A2330, #8B4A5A, #C4849A)' }} />
 
         <div style={{ padding: '36px 40px 40px' }}>
 
@@ -92,7 +122,7 @@ export default function LoginPreview() {
           {/* ÉTAPE 1 — CHOIX DU RÔLE */}
           {!role && (
             <div>
-              <p style={{ fontSize: '13px', fontWeight: 600, color: '#78716C', textAlign: 'center', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', textAlign: 'center', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                 Choisissez votre espace
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -136,6 +166,7 @@ export default function LoginPreview() {
                     <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0, lineHeight: 1.4 }}>Mon espace personnel</p>
                   </div>
                 </button>
+
               </div>
             </div>
           )}
@@ -143,8 +174,8 @@ export default function LoginPreview() {
           {/* ÉTAPE 2 — FORMULAIRE */}
           {role && (
             <div>
-              {/* Breadcrumb retour */}
-              <button onClick={() => setRole(null)} style={{
+              {/* Retour */}
+              <button onClick={() => { setRole(null); setError(null); setEmail(''); setPassword('') }} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: '12px', color: '#A8A29E', fontFamily: 'inherit',
@@ -158,7 +189,7 @@ export default function LoginPreview() {
                 Changer d'espace
               </button>
 
-              {/* Badge rôle sélectionné */}
+              {/* Badge rôle */}
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 padding: '6px 14px', borderRadius: '20px', marginBottom: '20px',
@@ -171,30 +202,78 @@ export default function LoginPreview() {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="votre@email.com"
-                    style={{ width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <form onSubmit={handleLogin}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Email
+                    </label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      placeholder="votre@email.com" required
+                      style={{ width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
+                      onFocus={e => e.target.style.borderColor = role === 'admin' ? '#8B4A5A' : '#4F7EF7'}
+                      onBlur={e => e.target.style.borderColor = '#E8E4E0'}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Mot de passe
+                    </label>
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••" required
+                      style={{ width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
+                      onFocus={e => e.target.style.borderColor = role === 'admin' ? '#8B4A5A' : '#4F7EF7'}
+                      onBlur={e => e.target.style.borderColor = '#E8E4E0'}
+                    />
+                  </div>
+
+                  {error && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', padding: '10px 14px', color: '#DC2626', fontSize: '13.5px' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                      </svg>
+                      {error}
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={loading}
+                    style={{
+                      width: '100%', padding: '11px', borderRadius: '10px', border: 'none',
+                      background: loading
+                        ? '#C4B5A5'
+                        : role === 'admin'
+                          ? 'linear-gradient(135deg, #4A2330, #6B2F42)'
+                          : 'linear-gradient(135deg, #3B63D4, #4F7EF7)',
+                      color: 'white', fontSize: '14px', fontWeight: 600,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontFamily: 'inherit', marginTop: '4px', transition: 'opacity 0.15s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    }}
+                    onMouseEnter={e => { if (!loading) e.currentTarget.style.opacity = '0.9' }}
+                    onMouseLeave={e => { if (!loading) e.currentTarget.style.opacity = '1' }}>
+                    {loading ? (
+                      <>
+                        <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
+                        Connexion…
+                      </>
+                    ) : 'Se connecter'}
+                  </button>
+
+                  <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                    <Link href="/reset-password" style={{ fontSize: '13px', color: '#A8A29E', textDecoration: 'none', transition: 'color 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#6B2F42'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#A8A29E'}>
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
+
                 </div>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mot de passe</label>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-                    style={{ width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                </div>
-                <button style={{
-                  width: '100%', padding: '11px', borderRadius: '10px', border: 'none',
-                  background: role === 'admin' ? 'linear-gradient(135deg, #4A2330, #6B2F42)' : 'linear-gradient(135deg, #3B63D4, #4F7EF7)',
-                  color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginTop: '4px',
-                }}>
-                  Se connecter
-                </button>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ fontSize: '13px', color: '#A8A29E' }}>Mot de passe oublié ?</span>
-                </div>
-              </div>
+              </form>
             </div>
           )}
+
         </div>
       </div>
     </div>
