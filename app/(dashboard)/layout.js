@@ -109,6 +109,7 @@ export default function DashboardLayout({ children }) {
   const [messagesOuverts, setMessagesOuverts] = useState(0)
   const [demandesRecup, setDemandesRecup] = useState(0)
   const [clochePaneau, setClochePaneau] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
   const clocheRef = useRef(null)
 
   const totalNotifs = absencesEnAttente + messagesOuverts + demandesRecup
@@ -124,7 +125,6 @@ export default function DashboardLayout({ children }) {
   }, [])
 
   const fetchRole = async () => {
-    const [userEmail, setUserEmail] = useState('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserEmail(user.email)
