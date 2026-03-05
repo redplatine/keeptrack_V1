@@ -374,9 +374,9 @@ export default function EmployesPage() {
       ) : (
         <>
           {/* Labels colonnes */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, padding: '0 16px', marginBottom: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
             {['Salarié', 'Poste', 'Contrat', 'Entrée', 'Statut'].map((l, i) => (
-              <span key={i} style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</span>
+              <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</span>
             ))}
           </div>
 

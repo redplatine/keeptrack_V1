@@ -96,18 +96,18 @@ function LigneCompteur({ emp, solde, onDelta }) {
 
       {/* CP N-1, CP N, RTT — chacun en mini groupe Acq/Pris/Solde */}
       {GROUPES.map(g => (
-        <div key={g.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 600, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Acq</span>
+        <div key={g.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acq</span>
               <EditCell value={s[`${g.key}_acquis`] ?? null} color={g.color} bg={g.bg} small onSave={d => onDelta(emp.id, `${g.key}_acquis`, d)} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 600, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pris</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pris</span>
               <EditCell value={s[`${g.key}_pris`] ?? null} color={g.color} bg={g.bg} small onSave={d => onDelta(emp.id, `${g.key}_pris`, d)} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.7 }}>Solde</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Solde</span>
               <SoldeDisplay value={s[`${g.key}_solde`] ?? null} color={g.color} bg={g.bg} />
             </div>
           </div>
@@ -261,12 +261,12 @@ export default function CompteursPage() {
       </div>
 
       {/* LABELS COLONNES */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 90px', gap: 8, padding: '0 16px', marginBottom: 6 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 90px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
         {[['CP N-1', '#8B4A5A'], ['CP N', '#4F7EF7'], ['RTT', '#16A34A']].map(([l, c]) => (
-          <span key={l} style={{ fontSize: 10, fontWeight: 700, color: c, textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>{l}</span>
+          <span key={l} style={{ fontSize: 11, fontWeight: 700, color: c, textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>{l}</span>
         ))}
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Récup</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Récup</span>
       </div>
 
       {/* LIGNES EMPLOYÉS */}

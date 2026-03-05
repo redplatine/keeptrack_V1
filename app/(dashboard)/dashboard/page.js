@@ -206,12 +206,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Labels colonnes */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 80px 100px 28px', gap: 8, padding: '0 16px', marginBottom: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 80px 100px 28px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
             {['CP N-1', 'CP N', 'RTT', 'Récup'].map((l, i) => (
-              <span key={i} style={{ fontSize: 10, fontWeight: 700, color: ['#8B4A5A', '#4F7EF7', '#16A34A', '#B45309'][i], textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>{l}</span>
+              <span key={i} style={{ fontSize: 11, fontWeight: 700, color: ['#8B4A5A', '#4F7EF7', '#16A34A', '#B45309'][i], textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>{l}</span>
             ))}
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Statut</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Statut</span>
             <span />
           </div>
 
