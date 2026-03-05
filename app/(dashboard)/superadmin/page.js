@@ -1,4 +1,3 @@
-// app/(dashboard)/superadmin/page.js
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -21,7 +20,7 @@ export default function SuperAdminPage() {
   const [authorized, setAuthorized] = useState(false)
   const [loading, setLoading] = useState(true)
   const [entreprises, setEntreprises] = useState([])
-  const [form, setForm] = useState({ nom: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ nom: '', email: '' })
   const [creating, setCreating] = useState(false)
   const [success, setSuccess] = useState(null)
   const [error, setError] = useState(null)
@@ -49,40 +48,19 @@ export default function SuperAdminPage() {
   const handleCreate = async (e) => {
     e.preventDefault()
     setError(null)
-    if (form.password !== form.confirm) { setError('Les mots de passe ne correspondent pas.'); return }
-    if (form.password.length < 8) { setError('Le mot de passe doit faire au moins 8 caractères.'); return }
     setCreating(true)
 
-    // 1. Créer le compte Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-    })
-    if (authError) { setError('Erreur Auth : ' + authError.message); setCreating(false); return }
-
-    // 2. Créer l'entreprise
     const slug = generateSlug(form.nom)
-    const { data: entreprise, error: entError } = await supabase
-      .from('entreprises').insert([{ nom: form.nom, slug }])
-      .select().single()
-    if (entError) { setError('Erreur entreprise : ' + entError.message); setCreating(false); return }
+    const res = await fetch('/api/invite-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.email, nom: form.nom, slug })
+    })
+    const data = await res.json()
+    if (data.error) { setError(data.error); setCreating(false); return }
 
-    // 3. Créer l'employé admin
-    const { error: empError } = await supabase.from('employes').insert([{
-      nom: form.email.split('@')[0],
-      prenom: 'Admin',
-      email: form.email,
-      role: 'admin',
-      entreprise_id: entreprise.id,
-      date_entree: new Date().toISOString().split('T')[0],
-      type_contrat: 'CDI',
-      statut: 'Cadre',
-      temps_travail: 'Temps plein',
-    }])
-    if (empError) { setError('Erreur employé : ' + empError.message); setCreating(false); return }
-
-    setSuccess(`✅ Entreprise "${form.nom}" créée avec succès ! L'admin (${form.email}) peut maintenant se connecter.`)
-    setForm({ nom: '', email: '', password: '', confirm: '' })
+    setSuccess(`✅ Invitation envoyée à ${form.email} ! L'admin recevra un lien pour créer son mot de passe.`)
+    setForm({ nom: '', email: '' })
     fetchEntreprises()
     setCreating(false)
   }
@@ -98,7 +76,6 @@ export default function SuperAdminPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* BADGE SUPER ADMIN */}
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#1C1917', color: 'white', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, marginBottom: '24px' }}>
         <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
         Super Admin — KeepTrack
@@ -106,11 +83,11 @@ export default function SuperAdminPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
 
-        {/* FORMULAIRE CRÉATION */}
+        {/* FORMULAIRE */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #F0EDE9' }}>
             <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: 0 }}>Créer une nouvelle entreprise</h2>
-            <p style={{ fontSize: '12px', color: '#A8A29E', margin: '4px 0 0' }}>Crée l'entreprise + le compte admin en une seule action</p>
+            <p style={{ fontSize: '12px', color: '#A8A29E', margin: '4px 0 0' }}>Un email d'invitation sera envoyé à l'admin pour qu'il crée son mot de passe</p>
           </div>
           <div style={{ padding: '24px' }}>
             {error && (
@@ -135,19 +112,11 @@ export default function SuperAdminPage() {
                   <label style={S.label}>Email admin *</label>
                   <input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="admin@entreprise.fr" style={S.input} />
                 </div>
-                <div>
-                  <label style={S.label}>Mot de passe *</label>
-                  <input required type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 caractères" style={S.input} />
-                </div>
-                <div>
-                  <label style={S.label}>Confirmer le mot de passe *</label>
-                  <input required type="password" value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} placeholder="Répéter le mot de passe" style={S.input} />
-                </div>
                 <button type="submit" disabled={creating} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '11px', borderRadius: '10px', border: 'none', background: creating ? '#E8E4E0' : '#1C1917', color: creating ? '#A8A29E' : 'white', fontSize: '13.5px', fontWeight: 500, cursor: creating ? 'not-allowed' : 'pointer', fontFamily: 'inherit', marginTop: '4px' }}>
                   {creating ? (
-                    <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />Création…</>
+                    <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />Envoi en cours…</>
                   ) : (
-                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Créer l'entreprise</>
+                    <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Envoyer l'invitation</>
                   )}
                 </button>
               </div>
@@ -179,6 +148,8 @@ export default function SuperAdminPage() {
           </div>
         </div>
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
