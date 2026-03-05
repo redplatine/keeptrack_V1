@@ -26,6 +26,22 @@ export default function LoginPage() {
     }
 
     const { data: emp } = await supabase.from('employes').select('role').eq('email', email).single()
+
+    // Vérification que le rôle correspond à la tuile choisie
+    if (role === 'admin' && emp?.role === 'salarie') {
+      await supabase.auth.signOut()
+      setError("Ce compte n'a pas accès à l'espace Administrateur")
+      setLoading(false)
+      return
+    }
+
+    if (role === 'salarie' && (emp?.role === 'admin' || emp?.role === 'manager')) {
+      await supabase.auth.signOut()
+      setError("Ce compte n'a pas accès à l'espace Salarié")
+      setLoading(false)
+      return
+    }
+
     if (emp?.role === 'salarie') router.push('/profil')
     else router.push('/dashboard')
   }
@@ -37,7 +53,7 @@ export default function LoginPage() {
       padding: '24px', position: 'relative', overflow: 'hidden',
     }}>
 
-      {/* FOND SVG — même que DashboardLayout mais centré plein écran */}
+      {/* FOND SVG */}
       <svg style={{ position: 'fixed', inset: 0, width: '100%', height: '100vh', pointerEvents: 'none', zIndex: 0 }} xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYTop slice">
         <defs>
           <linearGradient id="bgFade" x1="0" y1="0" x2="0" y2="1">
