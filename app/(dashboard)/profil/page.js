@@ -2,16 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 
 function InfoField({ label, value, mono = false }) {
   return (
     <div style={{ padding: '14px 20px', borderBottom: '1px solid #FAF8F6' }}>
-      <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>
-        {label}
-      </p>
-      <p style={{ fontSize: '14px', fontWeight: 500, color: value ? '#1C1917' : '#C4B5A5', margin: 0, fontFamily: mono ? 'monospace' : 'inherit' }}>
-        {value || '—'}
-      </p>
+      <p style={{ fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>{label}</p>
+      <p style={{ fontSize: '14px', fontWeight: 500, color: value ? '#1C1917' : '#C4B5A5', margin: 0, fontFamily: mono ? 'monospace' : 'inherit' }}>{value || '—'}</p>
     </div>
   )
 }
@@ -64,16 +61,28 @@ export default function ProfilPage() {
   const [uploadLoading, setUploadLoading] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const fileInputRef = useRef(null)
+  const { entrepriseId } = useEntreprise()
 
-  useEffect(() => { fetchProfil() }, [])
+  useEffect(() => { if (entrepriseId) fetchProfil() }, [entrepriseId])
 
   const fetchProfil = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
+
+    const { data: emp } = await supabase
+      .from('employes').select('*')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setEmploye(emp)
+
     if (emp) {
       const annee = new Date().getFullYear()
-      const { data: soldesData } = await supabase.from('soldes_conges').select('*').eq('employe_id', emp.id).eq('annee', annee).single()
+      const { data: soldesData } = await supabase
+        .from('soldes_conges').select('*')
+        .eq('employe_id', emp.id)
+        .eq('entreprise_id', entrepriseId)
+        .eq('annee', annee)
+        .single()
       setSoldes(soldesData)
       const { data } = supabase.storage.from('avatars').getPublicUrl(`${emp.id}/avatar`)
       setAvatar(`${data.publicUrl}?t=${Date.now()}`)
@@ -113,22 +122,10 @@ export default function ProfilPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* CARTE IDENTITÉ RAPIDE */}
-      <div style={{
-        background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '20px',
-        padding: '24px 28px', display: 'flex', alignItems: 'center', gap: '24px'
-      }}>
+      <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '20px', padding: '24px 28px', display: 'flex', alignItems: 'center', gap: '24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: '88px', height: '88px', borderRadius: '20px',
-              background: avatarError || !avatar ? '#F2E6E9' : 'transparent',
-              border: '2px dashed #E8E4E0', overflow: 'hidden',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'border-color 0.15s',
-            }}
+          <div onClick={() => fileInputRef.current?.click()}
+            style={{ width: '88px', height: '88px', borderRadius: '20px', background: avatarError || !avatar ? '#F2E6E9' : 'transparent', border: '2px dashed #E8E4E0', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'border-color 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = '#8B4A5A'}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#E8E4E0'}>
             {uploadLoading ? (
@@ -138,59 +135,30 @@ export default function ProfilPage() {
             ) : (
               <span style={{ fontSize: '28px', fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
             )}
-            <div style={{
-              position: 'absolute', inset: 0, background: 'rgba(74,35,48,0.35)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: 0, transition: 'opacity 0.15s', borderRadius: '18px'
-            }}
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(74,35,48,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s', borderRadius: '18px' }}
               onMouseEnter={e => e.currentTarget.style.opacity = 1}
               onMouseLeave={e => e.currentTarget.style.opacity = 0}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
           </div>
-          <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>
-            {uploadLoading ? 'Upload…' : 'Changer la photo'}
-          </p>
+          <p style={{ fontSize: '11px', color: '#A8A29E', margin: 0 }}>{uploadLoading ? 'Upload…' : 'Changer la photo'}</p>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
         </div>
 
         <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1C1917', margin: '0 0 4px', letterSpacing: '-0.3px' }}>
-            {employe.prenom} {employe.nom}
-          </h2>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1C1917', margin: '0 0 4px', letterSpacing: '-0.3px' }}>{employe.prenom} {employe.nom}</h2>
           <p style={{ fontSize: '14px', color: '#78716C', margin: '0 0 2px' }}>{employe.poste || '—'}</p>
           <p style={{ fontSize: '13px', color: '#A8A29E', margin: '0 0 12px' }}>{employe.email}</p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px',
-              background: employe.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9',
-              color: employe.statut === 'Cadre' ? '#6B2F42' : '#78716C',
-            }}>{employe.statut}</span>
-            {employe.type_contrat && (
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#F9EEF1', color: '#6B2F42' }}>
-                {employe.type_contrat}
-              </span>
-            )}
-            {employe.matricule && (
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#FAF8F6', color: '#A8A29E', fontFamily: 'monospace' }}>
-                {employe.matricule}
-              </span>
-            )}
-            {employe.forfait_jours && (
-              <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB' }}>
-                Forfait jours
-              </span>
-            )}
+            <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: employe.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: employe.statut === 'Cadre' ? '#6B2F42' : '#78716C' }}>{employe.statut}</span>
+            {employe.type_contrat && <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#F9EEF1', color: '#6B2F42' }}>{employe.type_contrat}</span>}
+            {employe.matricule && <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#FAF8F6', color: '#A8A29E', fontFamily: 'monospace' }}>{employe.matricule}</span>}
+            {employe.forfait_jours && <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: '#EFF6FF', color: '#2563EB' }}>Forfait jours</span>}
           </div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-
-        {/* BLOC IDENTITÉ */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <SectionTitle>Identité</SectionTitle>
           <InfoField label="Nom complet" value={`${employe.prenom} ${employe.nom}`} />
@@ -201,8 +169,6 @@ export default function ProfilPage() {
           <InfoField label="N° Sécurité sociale" value={employe.numero_secu} mono />
           <InfoField label="Adresse" value={adresse} />
         </div>
-
-        {/* BLOC CONTRAT */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <SectionTitle>Contrat</SectionTitle>
           <InfoField label="Poste" value={employe.poste} />
@@ -219,7 +185,6 @@ export default function ProfilPage() {
         </div>
       </div>
 
-      {/* BLOC SOLDES */}
       <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <SectionTitle>Soldes de congés — {new Date().getFullYear()}</SectionTitle>
         <div style={{ padding: '20px 24px' }}>

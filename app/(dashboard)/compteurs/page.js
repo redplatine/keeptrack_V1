@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 import * as XLSX from 'xlsx'
 
 function getAvatarUrl(id) {
@@ -23,7 +24,6 @@ function Avatar({ id, prenom, nom, size = 32 }) {
   )
 }
 
-// Cellule éditable par delta (±)
 function EditCell({ value, onSave, color, bg, small = false }) {
   const [editing, setEditing] = useState(false)
   const [delta, setDelta] = useState('')
@@ -62,7 +62,6 @@ function EditCell({ value, onSave, color, bg, small = false }) {
   )
 }
 
-// Solde calculé automatiquement — non éditable
 function SoldeDisplay({ value, color, bg }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 42, height: 26, borderRadius: 7, fontSize: 13, fontWeight: 800, background: bg, color, padding: '0 8px', border: `1px solid ${color}22` }}>
@@ -71,7 +70,6 @@ function SoldeDisplay({ value, color, bg }) {
   )
 }
 
-// Ligne employé dans le tableau compteurs
 function LigneCompteur({ emp, solde, onDelta }) {
   const GROUPES = [
     { key: 'cp_n1', label: 'CP N-1', color: '#8B4A5A', bg: '#F9EEF1' },
@@ -84,8 +82,6 @@ function LigneCompteur({ emp, solde, onDelta }) {
     <div style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 90px', gap: 8, alignItems: 'center', transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.1)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
-
-      {/* Identité */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} size={34} />
         <div>
@@ -93,8 +89,6 @@ function LigneCompteur({ emp, solde, onDelta }) {
           <p style={{ fontSize: 11, color: '#A8A29E', margin: 0 }}>{emp.poste || '—'} · <span style={{ fontFamily: 'monospace', fontSize: 10, background: '#F0EDE9', color: '#78716C', padding: '1px 5px', borderRadius: 4 }}>{emp.matricule || '—'}</span></p>
         </div>
       </div>
-
-      {/* CP N-1, CP N, RTT — chacun en mini groupe Acquis/Pris/Solde */}
       {GROUPES.map(g => (
         <div key={g.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
@@ -111,7 +105,6 @@ function LigneCompteur({ emp, solde, onDelta }) {
               <SoldeDisplay value={s[`${g.key}_solde`] ?? null} color={g.color} bg={g.bg} />
             </div>
           </div>
-          {/* Barre de progression sous le groupe */}
           {(s[`${g.key}_acquis`] || 0) > 0 && (
             <div style={{ width: '100%', height: 3, background: `${g.color}18`, borderRadius: 99, overflow: 'hidden' }}>
               <div style={{ height: '100%', background: g.color, borderRadius: 99, width: `${Math.min(100, ((s[`${g.key}_pris`] || 0) / s[`${g.key}_acquis`]) * 100)}%` }} />
@@ -119,8 +112,6 @@ function LigneCompteur({ emp, solde, onDelta }) {
           )}
         </div>
       ))}
-
-      {/* Récup — solde éditable directement */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <span style={{ fontSize: 9, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.04em', opacity: 0.7 }}>Récup</span>
         <EditCell value={s.recup_solde ?? null} color="#B45309" bg="#FFFBEB" onSave={d => onDelta(emp.id, 'recup_solde', d)} />
@@ -129,22 +120,35 @@ function LigneCompteur({ emp, solde, onDelta }) {
   )
 }
 
-// ─── PAGE PRINCIPALE ─────────────────────────────────────────────────────────
-
 export default function CompteursPage() {
   const [employes, setEmployes] = useState([])
   const [soldes, setSoldes] = useState({})
   const [demandes, setDemandes] = useState([])
   const [loading, setLoading] = useState(true)
+  const { entrepriseId } = useEntreprise()
   const annee = new Date().getFullYear()
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { if (entrepriseId) fetchAll() }, [entrepriseId])
 
   const fetchAll = async () => {
     setLoading(true)
-    const { data: emps } = await supabase.from('employes').select('id, nom, prenom, poste, matricule').order('nom')
-    const { data: sols } = await supabase.from('soldes_conges').select('*').eq('annee', annee)
-    const { data: dems } = await supabase.from('demandes_recup').select('*, employes(nom, prenom)').eq('statut', 'En attente').order('created_at', { ascending: false })
+
+    const { data: emps } = await supabase
+      .from('employes').select('id, nom, prenom, poste, matricule')
+      .eq('entreprise_id', entrepriseId)
+      .order('nom')
+
+    const { data: sols } = await supabase
+      .from('soldes_conges').select('*')
+      .eq('entreprise_id', entrepriseId)
+      .eq('annee', annee)
+
+    const { data: dems } = await supabase
+      .from('demandes_recup').select('*, employes(nom, prenom)')
+      .eq('entreprise_id', entrepriseId)
+      .eq('statut', 'En attente')
+      .order('created_at', { ascending: false })
+
     const soldesMap = {}
     for (const s of sols || []) soldesMap[s.employe_id] = s
     setSoldes(soldesMap)
@@ -169,8 +173,13 @@ export default function CompteursPage() {
       updates[`${matchedPrefix}_solde`] = Math.max(0, acquis - pris)
     }
 
-    if (solde) await supabase.from('soldes_conges').update(updates).eq('id', solde.id)
-    else await supabase.from('soldes_conges').insert({ employe_id: employeId, annee, ...updates })
+    if (solde) {
+      await supabase.from('soldes_conges').update(updates).eq('id', solde.id)
+    } else {
+      await supabase.from('soldes_conges').insert({
+        employe_id: employeId, entreprise_id: entrepriseId, annee, ...updates
+      })
+    }
     await fetchAll()
   }
 
@@ -182,7 +191,10 @@ export default function CompteursPage() {
         recup_solde:  (solde.recup_solde  || 0) + demande.nb_jours,
       }).eq('id', solde.id)
     } else {
-      await supabase.from('soldes_conges').insert({ employe_id: demande.employe_id, annee, recup_acquis: demande.nb_jours, recup_solde: demande.nb_jours })
+      await supabase.from('soldes_conges').insert({
+        employe_id: demande.employe_id, entreprise_id: entrepriseId,
+        annee, recup_acquis: demande.nb_jours, recup_solde: demande.nb_jours
+      })
     }
     await supabase.from('demandes_recup').update({ statut: 'Validée' }).eq('id', demande.id)
     await fetchAll()
@@ -220,7 +232,6 @@ export default function CompteursPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* DEMANDES RÉCUP EN ATTENTE */}
       {demandes.length > 0 && (
         <div style={{ background: 'white', borderRadius: 16, border: '1px solid #FDE68A', boxShadow: '0 2px 8px rgba(245,158,11,0.08)', marginBottom: 20, overflow: 'hidden' }}>
           <div style={{ padding: '16px 22px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -249,7 +260,6 @@ export default function CompteursPage() {
         </div>
       )}
 
-      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <p style={{ fontSize: 13, color: '#78716C', margin: 0 }}>{employes.length} salarié(s) · {annee}</p>
         <button onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: '1px solid #E8E4E0', background: 'white', color: '#44403C', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
@@ -260,7 +270,6 @@ export default function CompteursPage() {
         </button>
       </div>
 
-      {/* LABELS COLONNES */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 90px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
         {[['CP N-1', '#8B4A5A'], ['CP N', '#4F7EF7'], ['RTT', '#16A34A']].map(([l, c]) => (
@@ -269,14 +278,12 @@ export default function CompteursPage() {
         <span style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Récup</span>
       </div>
 
-      {/* LIGNES EMPLOYÉS */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {employes.map(emp => (
           <LigneCompteur key={emp.id} emp={emp} solde={soldes[emp.id]} onDelta={handleDelta} />
         ))}
       </div>
 
-      {/* LÉGENDE */}
       <div style={{ marginTop: 16, padding: '13px 18px', background: 'rgba(255,255,255,0.7)', borderRadius: 12, border: '1px solid #E8E4E0' }}>
         <p style={{ fontSize: 12, color: '#78716C', margin: 0 }}>
           💡 <strong>Acq</strong> et <strong>Pris</strong> sont éditables — le <strong>Solde</strong> se calcule automatiquement (Acquis − Pris). Entrez un nombre positif pour ajouter, négatif pour retirer. <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Entrée</kbd> pour confirmer, <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Échap</kbd> pour annuler.

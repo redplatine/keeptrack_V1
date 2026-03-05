@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 import jsPDF from 'jspdf'
 
 export default function DocumentsPage() {
@@ -14,21 +15,35 @@ export default function DocumentsPage() {
   const [societe, setSociete] = useState(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(null)
+  const { entrepriseId } = useEntreprise()
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { if (entrepriseId) fetchData() }, [entrepriseId])
 
   useEffect(() => {
-    if (selectedEmployeId) fetchEmployeDetails(selectedEmployeId)
-  }, [selectedEmployeId])
+    if (selectedEmployeId && entrepriseId) fetchEmployeDetails(selectedEmployeId)
+  }, [selectedEmployeId, entrepriseId])
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
+
+    const { data: emp } = await supabase
+      .from('employes').select('*')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setCurrentRole(emp?.role)
-    const { data: soc } = await supabase.from('societe').select('*').single()
+
+    const { data: soc } = await supabase
+      .from('societe').select('*')
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setSociete(soc)
+
     if (emp?.role === 'admin' || emp?.role === 'manager') {
-      const { data: emps } = await supabase.from('employes').select('id, nom, prenom, poste').order('nom')
+      const { data: emps } = await supabase
+        .from('employes').select('id, nom, prenom, poste')
+        .eq('entreprise_id', entrepriseId)
+        .order('nom')
       setEmployes(emps || [])
       if (emps?.length > 0) setSelectedEmployeId(emps[0].id)
     } else {
@@ -40,9 +55,27 @@ export default function DocumentsPage() {
 
   const fetchEmployeDetails = async (id) => {
     const annee = new Date().getFullYear()
-    const { data: emp } = await supabase.from('employes').select('*').eq('id', id).single()
-    const { data: sol } = await supabase.from('soldes_conges').select('*').eq('employe_id', id).eq('annee', annee).single()
-    const { data: abs } = await supabase.from('absences').select('*').eq('employe_id', id).eq('statut', 'Approuvée').order('date_debut', { ascending: false })
+
+    const { data: emp } = await supabase
+      .from('employes').select('*')
+      .eq('id', id)
+      .eq('entreprise_id', entrepriseId)
+      .single()
+
+    const { data: sol } = await supabase
+      .from('soldes_conges').select('*')
+      .eq('employe_id', id)
+      .eq('entreprise_id', entrepriseId)
+      .eq('annee', annee)
+      .single()
+
+    const { data: abs } = await supabase
+      .from('absences').select('*')
+      .eq('employe_id', id)
+      .eq('entreprise_id', entrepriseId)
+      .eq('statut', 'Approuvée')
+      .order('date_debut', { ascending: false })
+
     setSelectedEmploye(emp)
     setSoldes(sol)
     setAbsences(abs || [])
@@ -64,7 +97,6 @@ export default function DocumentsPage() {
     const signataire = societe.nom_signataire || '[Nom du signataire]'
     const qualite = societe.qualite_signataire || 'représentant(e)'
 
-    // En-tête bordeaux
     doc.setFillColor(74, 35, 48)
     doc.rect(0, 0, W, 38, 'F')
     doc.setFont('helvetica', 'bold')
@@ -78,7 +110,6 @@ export default function DocumentsPage() {
     if (societe.siret)    doc.text(`SIRET : ${societe.siret}`, marginL, 29)
     if (societe.code_naf) doc.text(`Code NAF : ${societe.code_naf}`, marginL + 65, 29)
 
-    // Titre
     doc.setFillColor(248, 244, 242)
     doc.rect(0, 38, W, 18, 'F')
     doc.setFont('helvetica', 'bold')
@@ -91,7 +122,6 @@ export default function DocumentsPage() {
 
     let y = 68
 
-    // Intro avec signataire
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10.5)
     doc.setTextColor(44, 40, 38)
@@ -102,7 +132,6 @@ export default function DocumentsPage() {
     doc.text(intro, marginL, y)
     y += intro.length * 6 + 8
 
-    // Encadré infos salarié
     doc.setFillColor(250, 248, 246)
     doc.setDrawColor(232, 228, 224)
     doc.setLineWidth(0.4)
@@ -140,7 +169,6 @@ export default function DocumentsPage() {
     })
     y += boxH + 8
 
-    // Corps légal
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10.5)
     doc.setTextColor(44, 40, 38)
@@ -152,14 +180,12 @@ export default function DocumentsPage() {
     doc.text(corps, marginL, y)
     y += corps.length * 6 + 14
 
-    // Date et lieu
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(10)
     doc.setTextColor(100, 90, 85)
     doc.text(`Fait à ${societe.ville || '[Ville]'}, le ${today}`, marginL, y)
     y += 16
 
-    // Zone signature
     doc.setFillColor(250, 248, 246)
     doc.setDrawColor(232, 228, 224)
     doc.setLineWidth(0.4)
@@ -179,7 +205,6 @@ export default function DocumentsPage() {
     doc.text(qualite, marginL + 6, y + 25)
     doc.text(societe.raison_sociale || '', marginL + 6, y + 32)
 
-    // Pied de page
     doc.setFillColor(245, 242, 240)
     doc.rect(0, 282, W, 15, 'F')
     doc.setFont('helvetica', 'normal')
@@ -207,7 +232,6 @@ export default function DocumentsPage() {
     const nomComplet = `${selectedEmploye.prenom} ${selectedEmploye.nom}`
     const adresseSociete = [societe?.numero_voie, societe?.nom_rue, societe?.code_postal, societe?.ville].filter(Boolean).join(' ')
 
-    // En-tête
     doc.setFillColor(74, 35, 48)
     doc.rect(0, 0, W, 38, 'F')
     doc.setFont('helvetica', 'bold')
@@ -219,7 +243,6 @@ export default function DocumentsPage() {
     doc.setTextColor(200, 160, 170)
     doc.text(adresseSociete, marginL, 23)
 
-    // Titre
     doc.setFillColor(248, 244, 242)
     doc.rect(0, 38, W, 18, 'F')
     doc.setFont('helvetica', 'bold')
@@ -232,7 +255,6 @@ export default function DocumentsPage() {
 
     let y = 66
 
-    // Infos salarié
     doc.setFillColor(250, 248, 246)
     doc.setDrawColor(232, 228, 224)
     doc.setLineWidth(0.4)
@@ -252,7 +274,6 @@ export default function DocumentsPage() {
     )
     y += 30
 
-    // Tableau soldes
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     doc.setTextColor(28, 25, 23)
@@ -302,7 +323,6 @@ export default function DocumentsPage() {
     })
     y += 12
 
-    // Historique absences
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     doc.setTextColor(28, 25, 23)
@@ -355,7 +375,6 @@ export default function DocumentsPage() {
       })
     }
 
-    // Pied de page
     doc.setFillColor(245, 242, 240)
     doc.rect(0, 282, W, 15, 'F')
     doc.setFont('helvetica', 'normal')
@@ -379,7 +398,6 @@ export default function DocumentsPage() {
   return (
     <div style={{ padding: '24px 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* SÉLECTEUR SALARIÉ */}
       {isAdminOrManager && (
         <div style={{ background: 'white', borderRadius: '16px', padding: '20px 24px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '20px' }}>
           <label style={{ fontSize: '12px', fontWeight: 600, color: '#A8A29E', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -394,7 +412,6 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* CARTE SALARIÉ */}
       {selectedEmploye && (
         <div style={{ background: 'white', borderRadius: '16px', padding: '20px 24px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#F2E6E9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: '#6B2F42', flexShrink: 0 }}>
@@ -413,10 +430,8 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {/* DOCUMENTS */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
-        {/* ATTESTATION EMPLOYEUR */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #4A2330, #6B2F42)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -432,12 +447,7 @@ export default function DocumentsPage() {
           </div>
           <div style={{ padding: '16px 24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              {[
-                'En-tête société (raison sociale, adresse, SIRET)',
-                'Nom & qualité du signataire',
-                'Informations contractuelles complètes',
-                'Corps légal standard + zone signature',
-              ].map((item, i) => (
+              {['En-tête société (raison sociale, adresse, SIRET)', 'Nom & qualité du signataire', 'Informations contractuelles complètes', 'Corps légal standard + zone signature'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                   <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#8B4A5A', flexShrink: 0 }} />
                   <span style={{ fontSize: '12.5px', color: '#78716C' }}>{item}</span>
@@ -446,20 +456,12 @@ export default function DocumentsPage() {
             </div>
             {!societe?.nom_signataire && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '8px 12px', marginBottom: '12px' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" style={{ flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <span style={{ fontSize: '11.5px', color: '#B45309' }}>Renseignez le signataire dans l'onglet Société</span>
               </div>
             )}
             <button onClick={genererAttestation} disabled={generating === 'attestation' || !selectedEmploye}
-              style={{
-                width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
-                background: generating === 'attestation' ? '#C4B5A5' : 'linear-gradient(135deg, #4A2330, #6B2F42)',
-                color: 'white', fontSize: '13.5px', fontWeight: 600,
-                cursor: generating === 'attestation' ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              }}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', background: generating === 'attestation' ? '#C4B5A5' : 'linear-gradient(135deg, #4A2330, #6B2F42)', color: 'white', fontSize: '13.5px', fontWeight: 600, cursor: generating === 'attestation' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               onMouseEnter={e => { if (!generating) e.currentTarget.style.opacity = '0.9' }}
               onMouseLeave={e => { if (!generating) e.currentTarget.style.opacity = '1' }}>
               {generating === 'attestation' ? (
@@ -471,7 +473,6 @@ export default function DocumentsPage() {
           </div>
         </div>
 
-        {/* RÉCAP CONGÉS */}
         <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, #1D4ED8, #4F7EF7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -487,12 +488,7 @@ export default function DocumentsPage() {
           </div>
           <div style={{ padding: '16px 24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              {[
-                'Soldes CP N-1, CP N, RTT et Récupération',
-                'Acquis / Pris / Solde restant détaillés',
-                `Historique des absences approuvées ${new Date().getFullYear()}`,
-                'Statut de chaque compteur (OK / Faible / Épuisé)',
-              ].map((item, i) => (
+              {['Soldes CP N-1, CP N, RTT et Récupération', 'Acquis / Pris / Solde restant détaillés', `Historique des absences approuvées ${new Date().getFullYear()}`, 'Statut de chaque compteur (OK / Faible / Épuisé)'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                   <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#4F7EF7', flexShrink: 0 }} />
                   <span style={{ fontSize: '12.5px', color: '#78716C' }}>{item}</span>
@@ -500,13 +496,7 @@ export default function DocumentsPage() {
               ))}
             </div>
             <button onClick={genererRecapConges} disabled={generating === 'recap' || !selectedEmploye}
-              style={{
-                width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
-                background: generating === 'recap' ? '#C4B5A5' : 'linear-gradient(135deg, #1D4ED8, #4F7EF7)',
-                color: 'white', fontSize: '13.5px', fontWeight: 600,
-                cursor: generating === 'recap' ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              }}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', background: generating === 'recap' ? '#C4B5A5' : 'linear-gradient(135deg, #1D4ED8, #4F7EF7)', color: 'white', fontSize: '13.5px', fontWeight: 600, cursor: generating === 'recap' ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               onMouseEnter={e => { if (!generating) e.currentTarget.style.opacity = '0.9' }}
               onMouseLeave={e => { if (!generating) e.currentTarget.style.opacity = '1' }}>
               {generating === 'recap' ? (
@@ -519,7 +509,6 @@ export default function DocumentsPage() {
         </div>
       </div>
 
-      {/* NOTE */}
       <div style={{ marginTop: '16px', padding: '14px 20px', background: 'rgba(255,255,255,0.7)', borderRadius: '12px', border: '1px solid #E8E4E0' }}>
         <p style={{ fontSize: '12px', color: '#78716C', margin: 0 }}>
           💡 Les documents PDF sont générés directement dans votre navigateur. Les informations proviennent des données renseignées dans KeepTrack. Pensez à renseigner le signataire dans l'onglet <strong>Société</strong>.

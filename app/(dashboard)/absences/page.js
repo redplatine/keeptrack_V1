@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 import * as XLSX from 'xlsx'
 
 const joursFeries = [
@@ -83,26 +84,51 @@ export default function AbsencesPage() {
   const [filtreStatut, setFiltreStatut] = useState('')
   const [filtreEmployeId, setFiltreEmployeId] = useState('')
 
+  const { entrepriseId } = useEntreprise()
   const nbJoursCalcule = calculNbJours(form.type_absence, form.date_debut, form.date_fin, form.demi_journee)
   const optionsMois = useMemo(() => genererOptionsMois(), [])
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { if (entrepriseId) fetchData() }, [entrepriseId])
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
+
+    // Employé connecté
+    const { data: emp } = await supabase
+      .from('employes').select('*')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setCurrentEmploye(emp)
-    const { data: allEmployes } = await supabase.from('employes').select('id, nom, prenom, role').order('nom')
+
+    // Tous les employés de l'entreprise
+    const { data: allEmployes } = await supabase
+      .from('employes').select('id, nom, prenom, role')
+      .eq('entreprise_id', entrepriseId)
+      .order('nom')
     setEmployes(allEmployes || [])
+
+    // Absences de l'entreprise
     let absData = []
     if (emp?.role === 'salarie') {
-      const { data } = await supabase.from('absences').select('*').eq('employe_id', emp.id).order('date_debut', { ascending: false })
+      const { data } = await supabase
+        .from('absences').select('*')
+        .eq('employe_id', emp.id)
+        .eq('entreprise_id', entrepriseId)
+        .order('date_debut', { ascending: false })
       absData = data || []
     } else {
-      const { data } = await supabase.from('absences').select('*').order('date_debut', { ascending: false })
+      const { data } = await supabase
+        .from('absences').select('*')
+        .eq('entreprise_id', entrepriseId)
+        .order('date_debut', { ascending: false })
       absData = data || []
     }
-    const { data: employesData } = await supabase.from('employes').select('id, nom, prenom, matricule')
+
+    // Enrichir avec les infos employé
+    const { data: employesData } = await supabase
+      .from('employes').select('id, nom, prenom, matricule')
+      .eq('entreprise_id', entrepriseId)
     absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
     setAbsences(absData)
     setLoading(false)
@@ -132,7 +158,11 @@ export default function AbsencesPage() {
     const date_fin_reelle = form.demi_journee ? form.date_debut : form.date_fin
     if (['CP','RTT','Récupération'].includes(form.type_absence)) {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', employe_id).eq('annee', annee).single()
+      const { data: solde } = await supabase
+        .from('soldes_conges').select('*')
+        .eq('employe_id', employe_id)
+        .eq('entreprise_id', entrepriseId)
+        .eq('annee', annee).single()
       if (solde) {
         if (form.type_absence === 'RTT' && nbJoursCalcule > (solde.rtt_solde || 0)) { setAlerteForm(`Solde RTT insuffisant — Disponible : ${solde.rtt_solde} j, demande : ${nbJoursCalcule} j`); return }
         else if (form.type_absence === 'Récupération' && nbJoursCalcule > (solde.recup_solde || 0)) { setAlerteForm(`Solde Récupération insuffisant — Disponible : ${solde.recup_solde} j, demande : ${nbJoursCalcule} j`); return }
@@ -142,10 +172,19 @@ export default function AbsencesPage() {
         }
       }
     }
-    const { data: absExistantes } = await supabase.from('absences').select('id, date_debut, date_fin, type_absence').eq('employe_id', employe_id).neq('statut', 'Refusée')
+    const { data: absExistantes } = await supabase
+      .from('absences').select('id, date_debut, date_fin, type_absence')
+      .eq('employe_id', employe_id)
+      .eq('entreprise_id', entrepriseId)
+      .neq('statut', 'Refusée')
     const chevauchement = absExistantes?.find(abs => { const f = abs.date_fin || abs.date_debut; return form.date_debut <= f && date_fin_reelle >= abs.date_debut })
     if (chevauchement) { setAlerteForm(`Chevauchement avec une absence existante (${chevauchement.type_absence} du ${chevauchement.date_debut} au ${chevauchement.date_fin || chevauchement.date_debut})`); return }
-    const { error } = await supabase.from('absences').insert([{ employe_id, type_absence: form.type_absence, date_debut: form.date_debut, date_fin: date_fin_reelle, nb_jours: nbJoursCalcule, statut, commentaire_salarie: form.commentaire_salarie }])
+    const { error } = await supabase.from('absences').insert([{
+      employe_id, entreprise_id: entrepriseId,
+      type_absence: form.type_absence, date_debut: form.date_debut,
+      date_fin: date_fin_reelle, nb_jours: nbJoursCalcule,
+      statut, commentaire_salarie: form.commentaire_salarie
+    }])
     if (!error) { setShowForm(false); setAlerteForm(null); setForm({ employe_id: '', type_absence: 'CP', date_debut: '', date_fin: '', demi_journee: false, commentaire_salarie: '' }); fetchData() }
     else setAlerteForm('Erreur : ' + error.message)
   }
@@ -164,21 +203,25 @@ export default function AbsencesPage() {
     const abs = absences.find(a => a.id === id)
     if (statut === 'Approuvée' && abs) {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', abs.employe_id).eq('annee', annee).single()
+      const { data: solde } = await supabase
+        .from('soldes_conges').select('*')
+        .eq('employe_id', abs.employe_id)
+        .eq('entreprise_id', entrepriseId)
+        .eq('annee', annee).single()
       if (solde) {
         const nbJours = abs.nb_jours
-        if (abs.type_absence === 'RTT') await supabase.from('soldes_conges').update({ rtt_solde: Math.max(0, (solde.rtt_solde||0)-nbJours), rtt_pris: (solde.rtt_pris||0)+nbJours }).eq('employe_id', abs.employe_id).eq('annee', annee)
-        else if (abs.type_absence === 'Récupération') await supabase.from('soldes_conges').update({ recup_solde: Math.max(0, (solde.recup_solde||0)-nbJours), recup_pris: (solde.recup_pris||0)+nbJours }).eq('employe_id', abs.employe_id).eq('annee', annee)
+        if (abs.type_absence === 'RTT') await supabase.from('soldes_conges').update({ rtt_solde: Math.max(0, (solde.rtt_solde||0)-nbJours), rtt_pris: (solde.rtt_pris||0)+nbJours }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
+        else if (abs.type_absence === 'Récupération') await supabase.from('soldes_conges').update({ recup_solde: Math.max(0, (solde.recup_solde||0)-nbJours), recup_pris: (solde.recup_pris||0)+nbJours }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
         else if (abs.type_absence === 'CP') {
           let r=nbJours, n1s=solde.cp_n1_solde||0, ns=solde.cp_n_solde||0, n1p=solde.cp_n1_pris||0, np=solde.cp_n_pris||0
           if (n1s>=r){n1s-=r;n1p+=r;r=0}else{r-=n1s;n1p+=n1s;n1s=0;ns=Math.max(0,ns-r);np+=r}
-          await supabase.from('soldes_conges').update({ cp_n1_solde:n1s, cp_n1_pris:n1p, cp_n_solde:ns, cp_n_pris:np }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          await supabase.from('soldes_conges').update({ cp_n1_solde:n1s, cp_n1_pris:n1p, cp_n_solde:ns, cp_n_pris:np }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
         }
       }
     }
     await supabase.from('absences').update({ statut }).eq('id', id)
     if (abs) {
-      const { data: empData } = await supabase.from('employes').select('email, prenom').eq('id', abs.employe_id).single()
+      const { data: empData } = await supabase.from('employes').select('email, prenom').eq('id', abs.employe_id).eq('entreprise_id', entrepriseId).single()
       if (empData?.email) await fetch('/api/notify-absence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emailSalarie: empData.email, prenomSalarie: empData.prenom, typeAbsence: abs.type_absence, dateDebut: abs.date_debut, dateFin: abs.date_fin || abs.date_debut, nbJours: abs.nb_jours, statut }) })
     }
     fetchData()
@@ -188,15 +231,19 @@ export default function AbsencesPage() {
     if (!window.confirm(`Supprimer cette absence de ${abs.nb_jours}j (${abs.type_absence}) ?`)) return
     if (abs.statut === 'Approuvée') {
       const annee = new Date().getFullYear()
-      const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', abs.employe_id).eq('annee', annee).single()
+      const { data: solde } = await supabase
+        .from('soldes_conges').select('*')
+        .eq('employe_id', abs.employe_id)
+        .eq('entreprise_id', entrepriseId)
+        .eq('annee', annee).single()
       if (solde) {
         const nbJours = abs.nb_jours
-        if (abs.type_absence === 'RTT') await supabase.from('soldes_conges').update({ rtt_solde: (solde.rtt_solde||0)+nbJours, rtt_pris: Math.max(0,(solde.rtt_pris||0)-nbJours) }).eq('employe_id', abs.employe_id).eq('annee', annee)
-        else if (abs.type_absence === 'Récupération') await supabase.from('soldes_conges').update({ recup_solde: (solde.recup_solde||0)+nbJours, recup_pris: Math.max(0,(solde.recup_pris||0)-nbJours) }).eq('employe_id', abs.employe_id).eq('annee', annee)
+        if (abs.type_absence === 'RTT') await supabase.from('soldes_conges').update({ rtt_solde: (solde.rtt_solde||0)+nbJours, rtt_pris: Math.max(0,(solde.rtt_pris||0)-nbJours) }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
+        else if (abs.type_absence === 'Récupération') await supabase.from('soldes_conges').update({ recup_solde: (solde.recup_solde||0)+nbJours, recup_pris: Math.max(0,(solde.recup_pris||0)-nbJours) }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
         else if (abs.type_absence === 'CP') {
           let r=nbJours, ns=solde.cp_n_solde||0, n1s=solde.cp_n1_solde||0, np=solde.cp_n_pris||0, n1p=solde.cp_n1_pris||0
           const d=Math.min(np,r); ns+=d; np-=d; r-=d; if(r>0){n1s+=r; n1p=Math.max(0,n1p-r)}
-          await supabase.from('soldes_conges').update({ cp_n_solde:ns, cp_n_pris:np, cp_n1_solde:n1s, cp_n1_pris:n1p }).eq('employe_id', abs.employe_id).eq('annee', annee)
+          await supabase.from('soldes_conges').update({ cp_n_solde:ns, cp_n_pris:np, cp_n1_solde:n1s, cp_n1_pris:n1p }).eq('employe_id', abs.employe_id).eq('entreprise_id', entrepriseId).eq('annee', annee)
         }
       }
     }
@@ -255,7 +302,6 @@ export default function AbsencesPage() {
         </div>
       </div>
 
-      {/* SUCCÈS RÉCUP */}
       {successRecup && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '12px', padding: '12px 16px', marginBottom: '16px', color: '#B45309', fontSize: '13.5px', fontWeight: 500 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -263,7 +309,6 @@ export default function AbsencesPage() {
         </div>
       )}
 
-      {/* FORMULAIRE RÉCUP */}
       {showFormRecup && !isManager && (
         <div style={{ background: 'white', borderRadius: '14px', padding: '24px 28px', border: '1px solid #FDE68A', boxShadow: '0 2px 8px rgba(245,158,11,0.08)', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 4px' }}>Demander des jours de récupération</h2>
@@ -379,7 +424,7 @@ export default function AbsencesPage() {
         </div>
       )}
 
-      {/* LISTE ABSENCES — cartes espacées */}
+      {/* LISTE */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
@@ -391,13 +436,11 @@ export default function AbsencesPage() {
         </div>
       ) : (
         <>
-          {/* Labels colonnes */}
           <div style={{ display: 'grid', gridTemplateColumns: isManager ? '1fr 120px 180px 70px 130px 1fr' : '120px 180px 70px 130px 1fr', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
             {(isManager ? ['Employé', 'Type', 'Période', 'Jours', 'Statut', 'Actions'] : ['Type', 'Période', 'Jours', 'Statut', 'Actions']).map((l, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</span>
             ))}
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {absencesFiltrees.map(abs => {
               const tc = TYPE_CONFIG[abs.type_absence] || { bg: '#F0EDE9', color: '#78716C' }
@@ -406,8 +449,6 @@ export default function AbsencesPage() {
                 <div key={abs.id} style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '13px 16px', display: 'grid', gridTemplateColumns: isManager ? '1fr 120px 180px 70px 130px 1fr' : '120px 180px 70px 130px 1fr', gap: 8, alignItems: 'center', transition: 'box-shadow 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
-
-                  {/* Employé (manager seulement) */}
                   {isManager && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, #F2E6E9, #E8D5D9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#6B2F42', flexShrink: 0 }}>
@@ -418,11 +459,7 @@ export default function AbsencesPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Type */}
                   <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: tc.bg, color: tc.color, width: 'fit-content' }}>{abs.type_absence}</span>
-
-                  {/* Période */}
                   <div style={{ fontSize: 12, color: '#78716C', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {abs.nb_jours === 0.5 ? (
                       <>{abs.date_debut} <span style={{ fontSize: 10, background: '#F0EDE9', color: '#78716C', padding: '1px 5px', borderRadius: 4 }}>½ j</span></>
@@ -430,17 +467,11 @@ export default function AbsencesPage() {
                       <>{abs.date_debut} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C4B5A5" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> {abs.date_fin}</>
                     )}
                   </div>
-
-                  {/* Jours */}
                   <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, height: 26, borderRadius: 7, fontSize: 13, fontWeight: 700, background: '#F0EDE9', color: '#44403C' }}>{abs.nb_jours}</span>
-
-                  {/* Statut */}
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, width: 'fit-content' }}>
                     <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
                     {abs.statut}
                   </span>
-
-                  {/* Actions */}
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                     {isManager && abs.statut === 'En attente' && (
                       <>

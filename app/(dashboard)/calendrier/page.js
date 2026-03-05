@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 
 const TYPE_CONFIG = {
   'CP':                  { bg: '#F0F7FF', color: '#2563EB', dot: '#3B82F6', initBg: '#DBEAFE', initColor: '#1D4ED8' },
@@ -23,36 +24,12 @@ function AbsenceBadge({ abs, isManager }) {
   const prenom = abs.employes?.prenom || '?'
   const nom = abs.employes?.nom || ''
   const initiales = `${prenom[0] || ''}${nom[0] || ''}`.toUpperCase()
-
   return (
-    <div
-      title={`${prenom} ${nom} — ${abs.type_absence} (${abs.statut})`}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '5px',
-        padding: '3px 7px 3px 4px',
-        borderRadius: '7px',
-        background: enAttente ? 'transparent' : conf.bg,
-        border: enAttente ? `1.5px dashed ${conf.dot}` : `1px solid transparent`,
-        opacity: enAttente ? 0.75 : 1,
-        overflow: 'hidden',
-        cursor: 'default',
-        maxWidth: '100%',
-      }}>
-      {/* Initiales */}
-      <span style={{
-        width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
-        background: conf.initBg, color: conf.initColor,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '9px', fontWeight: 800, letterSpacing: '0',
-      }}>
+    <div title={`${prenom} ${nom} — ${abs.type_absence} (${abs.statut})`} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 7px 3px 4px', borderRadius: '7px', background: enAttente ? 'transparent' : conf.bg, border: enAttente ? `1.5px dashed ${conf.dot}` : `1px solid transparent`, opacity: enAttente ? 0.75 : 1, overflow: 'hidden', cursor: 'default', maxWidth: '100%' }}>
+      <span style={{ width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, background: conf.initBg, color: conf.initColor, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, letterSpacing: '0' }}>
         {isManager ? initiales : abs.type_absence.slice(0, 2).toUpperCase()}
       </span>
-      {/* Nom */}
-      <span style={{
-        fontSize: '11.5px', fontWeight: 700, color: conf.color,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        lineHeight: 1.2,
-      }}>
+      <span style={{ fontSize: '11.5px', fontWeight: 700, color: conf.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
         {isManager ? `${prenom} ${nom[0]}.` : abs.type_absence}
       </span>
     </div>
@@ -64,22 +41,40 @@ export default function CalendrierPage() {
   const [employe, setEmploye] = useState(null)
   const [moisActuel, setMoisActuel] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const { entrepriseId } = useEntreprise()
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { if (entrepriseId) fetchData() }, [entrepriseId])
 
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
+
+    const { data: emp } = await supabase
+      .from('employes').select('*')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setEmploye(emp)
+
     let absData = []
-    if (emp.role === 'salarie') {
-      const { data } = await supabase.from('absences').select('*').eq('employe_id', emp.id).neq('statut', 'Refusée')
+    if (emp?.role === 'salarie') {
+      const { data } = await supabase
+        .from('absences').select('*')
+        .eq('employe_id', emp.id)
+        .eq('entreprise_id', entrepriseId)
+        .neq('statut', 'Refusée')
       absData = data || []
     } else {
-      const { data } = await supabase.from('absences').select('*').neq('statut', 'Refusée')
+      const { data } = await supabase
+        .from('absences').select('*')
+        .eq('entreprise_id', entrepriseId)
+        .neq('statut', 'Refusée')
       absData = data || []
     }
-    const { data: employesData } = await supabase.from('employes').select('id, nom, prenom')
+
+    const { data: employesData } = await supabase
+      .from('employes').select('id, nom, prenom')
+      .eq('entreprise_id', entrepriseId)
+
     absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
     setAbsences(absData)
     setLoading(false)
@@ -138,40 +133,18 @@ export default function CalendrierPage() {
       {/* NAVIGATION */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button onClick={() => setMoisActuel(new Date(annee, mois - 1, 1))} style={{
-            width: '34px', height: '34px', borderRadius: '9px',
-            border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-          }}
+          <button onClick={() => setMoisActuel(new Date(annee, mois - 1, 1))} style={{ width: '34px', height: '34px', borderRadius: '9px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-
-          <span style={{
-            fontSize: '14px', fontWeight: 700, color: 'white',
-            width: '168px', textAlign: 'center', textTransform: 'capitalize',
-            textShadow: '0 1px 4px rgba(0,0,0,0.15)',
-          }}>
-            {nomMois}
-          </span>
-
-          <button onClick={() => setMoisActuel(new Date(annee, mois + 1, 1))} style={{
-            width: '34px', height: '34px', borderRadius: '9px',
-            border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-          }}
+          <span style={{ fontSize: '14px', fontWeight: 700, color: 'white', width: '168px', textAlign: 'center', textTransform: 'capitalize', textShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>{nomMois}</span>
+          <button onClick={() => setMoisActuel(new Date(annee, mois + 1, 1))} style={{ width: '34px', height: '34px', borderRadius: '9px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
-
-          <button onClick={() => setMoisActuel(new Date())} style={{
-            padding: '7px 14px', borderRadius: '9px',
-            border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-            cursor: 'pointer', fontFamily: 'inherit',
-            fontSize: '13px', fontWeight: 500, color: 'white',
-          }}
+          <button onClick={() => setMoisActuel(new Date())} style={{ padding: '7px 14px', borderRadius: '9px', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px', fontWeight: 500, color: 'white' }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>
             Aujourd'hui
@@ -182,20 +155,12 @@ export default function CalendrierPage() {
       {/* LÉGENDE */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
         {Object.entries(TYPE_CONFIG).map(([type, conf]) => (
-          <div key={type} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '4px 10px', borderRadius: '20px',
-            background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)',
-          }}>
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)' }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: conf.dot, flexShrink: 0 }} />
             <span style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>{type}</span>
           </div>
         ))}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '4px 10px', borderRadius: '20px',
-          background: 'rgba(255,255,255,0.18)',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(255,255,255,0.18)' }}>
           <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
           <span style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>En attente</span>
         </div>
@@ -204,70 +169,28 @@ export default function CalendrierPage() {
       {/* EN-TÊTES JOURS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '6px' }}>
         {JOURS_FR.map((j, i) => (
-          <div key={j} style={{
-            padding: '10px 6px',
-            textAlign: 'center',
-            fontSize: '11px', fontWeight: 700,
-            color: i >= 5 ? '#A8A29E' : '#6B2F42',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            background: i >= 5 ? '#F5F0F1' : '#F2E6E9',
-            borderRadius: '10px',
-          }}>{j}</div>
+          <div key={j} style={{ padding: '10px 6px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: i >= 5 ? '#A8A29E' : '#6B2F42', letterSpacing: '0.06em', textTransform: 'uppercase', background: i >= 5 ? '#F5F0F1' : '#F2E6E9', borderRadius: '10px' }}>{j}</div>
         ))}
       </div>
 
-      {/* GRILLE JOURS */}
+      {/* GRILLE */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
         {jours.map(({ date, autresMois }, index) => {
           const absencesDuJour = getAbsencesDuJour(date)
           const estWeekend = date.getDay() === 0 || date.getDay() === 6
           const estAujourdhui = isAujourdhui(date)
-
           return (
-            <div key={index} style={{
-              minHeight: '100px',
-              padding: '9px 9px 7px',
-              borderRadius: '12px',
-              background: autresMois
-                ? 'rgba(255,255,255,0.45)'
-                : estWeekend ? '#FDFBFA' : 'white',
-              boxShadow: estAujourdhui
-                ? '0 2px 8px rgba(74,35,48,0.18), 0 0 0 2px #8B4A5A'
-                : autresMois
-                  ? '0 1px 3px rgba(0,0,0,0.04)'
-                  : '0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '3px',
-              transition: 'box-shadow 0.15s',
-            }}>
-              {/* Numéro du jour */}
+            <div key={index} style={{ minHeight: '100px', padding: '9px 9px 7px', borderRadius: '12px', background: autresMois ? 'rgba(255,255,255,0.45)' : estWeekend ? '#FDFBFA' : 'white', boxShadow: estAujourdhui ? '0 2px 8px rgba(74,35,48,0.18), 0 0 0 2px #8B4A5A' : autresMois ? '0 1px 3px rgba(0,0,0,0.04)' : '0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '3px', transition: 'box-shadow 0.15s' }}>
               <div style={{ marginBottom: '3px' }}>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: estAujourdhui ? 700 : 500,
-                  color: estAujourdhui ? 'white'
-                    : autresMois ? '#C4B5A5'
-                    : estWeekend ? '#B8B0AA'
-                    : '#44403C',
-                  width: '22px', height: '22px',
-                  borderRadius: '7px',
-                  background: estAujourdhui ? '#8B4A5A' : 'transparent',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                }}>
+                <span style={{ fontSize: '12px', fontWeight: estAujourdhui ? 700 : 500, color: estAujourdhui ? 'white' : autresMois ? '#C4B5A5' : estWeekend ? '#B8B0AA' : '#44403C', width: '22px', height: '22px', borderRadius: '7px', background: estAujourdhui ? '#8B4A5A' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   {date.getDate()}
                 </span>
               </div>
-
-              {/* Badges absences */}
               {absencesDuJour.slice(0, 3).map((abs, i) => (
                 <AbsenceBadge key={i} abs={abs} isManager={isManager} />
               ))}
               {absencesDuJour.length > 3 && (
-                <span style={{ fontSize: '10px', fontWeight: 600, color: '#A8A29E', paddingLeft: '4px' }}>
-                  +{absencesDuJour.length - 3} autres
-                </span>
+                <span style={{ fontSize: '10px', fontWeight: 600, color: '#A8A29E', paddingLeft: '4px' }}>+{absencesDuJour.length - 3} autres</span>
               )}
             </div>
           )
@@ -279,31 +202,18 @@ export default function CalendrierPage() {
         const absencesDuMois = absences.filter(abs => {
           const debut = new Date(abs.date_debut)
           const fin = new Date(abs.date_fin || abs.date_debut)
-          return (debut.getMonth() === mois && debut.getFullYear() === annee) ||
-                 (fin.getMonth() === mois && fin.getFullYear() === annee)
+          return (debut.getMonth() === mois && debut.getFullYear() === annee) || (fin.getMonth() === mois && fin.getFullYear() === annee)
         })
         if (absencesDuMois.length === 0) return null
-        const parType = absencesDuMois.reduce((acc, abs) => {
-          acc[abs.type_absence] = (acc[abs.type_absence] || 0) + 1
-          return acc
-        }, {})
+        const parType = absencesDuMois.reduce((acc, abs) => { acc[abs.type_absence] = (acc[abs.type_absence] || 0) + 1; return acc }, {})
         return (
-          <div style={{
-            marginTop: '16px', background: 'white', borderRadius: '16px',
-            border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            padding: '16px 22px'
-          }}>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
-              Résumé — {nomMois}
-            </p>
+          <div style={{ marginTop: '16px', background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '16px 22px' }}>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>Résumé — {nomMois}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {Object.entries(parType).map(([type, count]) => {
                 const conf = TYPE_CONFIG[type] || { bg: '#F0EDE9', color: '#78716C', dot: '#A8A29E' }
                 return (
-                  <div key={type} style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '6px 12px', borderRadius: '10px', background: conf.bg
-                  }}>
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '10px', background: conf.bg }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: conf.dot }} />
                     <span style={{ fontSize: '13px', fontWeight: 500, color: conf.color }}>{type}</span>
                     <span style={{ fontSize: '13px', fontWeight: 700, color: conf.color }}>{count}</span>

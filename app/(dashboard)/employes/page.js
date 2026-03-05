@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 import * as XLSX from 'xlsx'
 
 function getAvatarUrl(id) {
@@ -31,20 +32,9 @@ const CONTRAT_CONFIG = {
 }
 
 const S = {
-  input: {
-    width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px',
-    padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6',
-    outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box',
-  },
-  label: {
-    fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px',
-    display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em'
-  },
-  sectionTitle: {
-    fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase',
-    letterSpacing: '0.1em', padding: '0 0 10px', borderBottom: '1px solid #F0EDE9',
-    marginBottom: '16px', gridColumn: '1 / -1'
-  },
+  input: { width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box' },
+  label: { fontSize: '12px', fontWeight: 600, color: '#A8A29E', marginBottom: '6px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  sectionTitle: { fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 0 10px', borderBottom: '1px solid #F0EDE9', marginBottom: '16px', gridColumn: '1 / -1' },
 }
 
 const FORM_DEFAULT = {
@@ -66,14 +56,24 @@ export default function EmployesPage() {
   const [invitationLoading, setInvitationLoading] = useState(false)
   const [currentRole, setCurrentRole] = useState(null)
   const [form, setForm] = useState(FORM_DEFAULT)
+  const { entrepriseId } = useEntreprise()
 
-  useEffect(() => { fetchEmployes() }, [])
+  useEffect(() => { if (entrepriseId) fetchEmployes() }, [entrepriseId])
 
   const fetchEmployes = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: me } = await supabase.from('employes').select('role').eq('email', user.email).single()
+
+    const { data: me } = await supabase
+      .from('employes').select('role')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     setCurrentRole(me?.role)
-    const { data, error } = await supabase.from('employes').select('*').order('nom')
+
+    const { data, error } = await supabase
+      .from('employes').select('*')
+      .eq('entreprise_id', entrepriseId)
+      .order('nom')
     if (!error) setEmployes(data)
     setLoading(false)
   }
@@ -95,9 +95,17 @@ export default function EmployesPage() {
 
   const recalculerRTT = async (employeId, nouveauRttAnnuel) => {
     const annee = new Date().getFullYear()
-    const { data: solde } = await supabase.from('soldes_conges').select('*').eq('employe_id', employeId).eq('annee', annee).single()
+    const { data: solde } = await supabase
+      .from('soldes_conges').select('*')
+      .eq('employe_id', employeId)
+      .eq('entreprise_id', entrepriseId)
+      .eq('annee', annee).single()
     if (!solde) return
-    const { data: emp } = await supabase.from('employes').select('date_entree').eq('id', employeId).single()
+    const { data: emp } = await supabase
+      .from('employes').select('date_entree')
+      .eq('id', employeId)
+      .eq('entreprise_id', entrepriseId)
+      .single()
     if (!emp?.date_entree) return
     const aujourd_hui = new Date()
     const dateEntree = new Date(emp.date_entree)
@@ -115,7 +123,7 @@ export default function EmployesPage() {
     await supabase.from('soldes_conges').update({
       rtt_acquis: rttAcquisTotal,
       rtt_solde: Math.max(0, rttAcquisTotal - (solde.rtt_pris || 0)),
-    }).eq('employe_id', employeId).eq('annee', annee)
+    }).eq('employe_id', employeId).eq('entreprise_id', entrepriseId).eq('annee', annee)
   }
 
   const handleSubmit = async (e) => {
@@ -128,12 +136,11 @@ export default function EmployesPage() {
       numero_voie: form.numero_voie || null, nom_rue: form.nom_rue || null,
       code_postal: form.code_postal || null, ville: form.ville || null,
       date_naissance: form.date_naissance || null, rtt_annuel: form.rtt_annuel || 0,
-      numero_secu: form.numero_secu || null,
-      cp_naissance: form.cp_naissance || null,
-      lieu_naissance: form.lieu_naissance || null,
-      forfait_jours: form.forfait_jours || false,
+      numero_secu: form.numero_secu || null, cp_naissance: form.cp_naissance || null,
+      lieu_naissance: form.lieu_naissance || null, forfait_jours: form.forfait_jours || false,
       nb_jours_annuels: form.forfait_jours ? (parseInt(form.nb_jours_annuels) || null) : null,
       nb_heures_semaine: !form.forfait_jours ? (parseFloat(form.nb_heures_semaine) || null) : null,
+      entreprise_id: entrepriseId,
     }
     if (employeSelectionne) {
       const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
@@ -150,17 +157,21 @@ export default function EmployesPage() {
       const recup = parseFloat(form.recup_reprise)  || 0
       if (cp_n1 > 0 || cp_n > 0 || rtt > 0 || recup > 0) {
         const annee = new Date().getFullYear()
-        const { data: ex } = await supabase.from('soldes_conges').select('*').eq('employe_id', newEmp.id).eq('annee', annee).single()
+        const { data: ex } = await supabase
+          .from('soldes_conges').select('*')
+          .eq('employe_id', newEmp.id)
+          .eq('entreprise_id', entrepriseId)
+          .eq('annee', annee).single()
         if (ex) {
           await supabase.from('soldes_conges').update({
             cp_n1_acquis: (ex.cp_n1_acquis || 0) + cp_n1, cp_n1_solde: (ex.cp_n1_solde || 0) + cp_n1,
             cp_n_acquis:  (ex.cp_n_acquis  || 0) + cp_n,  cp_n_solde:  (ex.cp_n_solde  || 0) + cp_n,
             rtt_acquis:   (ex.rtt_acquis   || 0) + rtt,   rtt_solde:   (ex.rtt_solde   || 0) + rtt,
             recup_acquis: (ex.recup_acquis || 0) + recup, recup_solde: (ex.recup_solde || 0) + recup,
-          }).eq('employe_id', newEmp.id).eq('annee', annee)
+          }).eq('employe_id', newEmp.id).eq('entreprise_id', entrepriseId).eq('annee', annee)
         } else {
           await supabase.from('soldes_conges').insert({
-            employe_id: newEmp.id, annee,
+            employe_id: newEmp.id, entreprise_id: entrepriseId, annee,
             cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1,
             cp_n_acquis: cp_n, cp_n_solde: cp_n,
             rtt_acquis: rtt, rtt_solde: rtt,
@@ -183,10 +194,8 @@ export default function EmployesPage() {
       nom_rue: emp.nom_rue || '', code_postal: emp.code_postal || '', ville: emp.ville || '',
       date_naissance: emp.date_naissance || '', rtt_annuel: emp.rtt_annuel || 0,
       numero_secu: emp.numero_secu || '', cp_naissance: emp.cp_naissance || '',
-      lieu_naissance: emp.lieu_naissance || '',
-      forfait_jours: emp.forfait_jours || false,
-      nb_jours_annuels: emp.nb_jours_annuels || '',
-      nb_heures_semaine: emp.nb_heures_semaine || '',
+      lieu_naissance: emp.lieu_naissance || '', forfait_jours: emp.forfait_jours || false,
+      nb_jours_annuels: emp.nb_jours_annuels || '', nb_heures_semaine: emp.nb_heures_semaine || '',
     })
     setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -215,7 +224,7 @@ export default function EmployesPage() {
       'Salaire brut annuel': emp.salaire_brut || '',
     }))
     const ws = XLSX.utils.json_to_sheet(data)
-    ws['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }]
+    ws['!cols'] = [{wch:12},{wch:18},{wch:18},{wch:28},{wch:16},{wch:22},{wch:16},{wch:20},{wch:14},{wch:22},{wch:12},{wch:18},{wch:20},{wch:18},{wch:16},{wch:12},{wch:16},{wch:14},{wch:10},{wch:14},{wch:16},{wch:18},{wch:16}]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Employés')
     XLSX.writeFile(wb, `employes_${new Date().toISOString().split('T')[0]}.xlsx`)
@@ -231,7 +240,6 @@ export default function EmployesPage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
           {employes.length} salarié(s) · double-cliquez sur une carte pour modifier
@@ -255,7 +263,6 @@ export default function EmployesPage() {
         </div>
       </div>
 
-      {/* FORMULAIRE */}
       {showForm && (
         <div style={{ background: 'white', borderRadius: '16px', padding: '28px 32px', border: '1px solid #E8E4E0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
@@ -361,7 +368,6 @@ export default function EmployesPage() {
         </div>
       )}
 
-      {/* LISTE EMPLOYÉS — cartes espacées */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
@@ -373,13 +379,11 @@ export default function EmployesPage() {
         </div>
       ) : (
         <>
-          {/* Labels colonnes */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
             {['Salarié', 'Poste', 'Contrat', 'Entrée', 'Statut'].map((l, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</span>
             ))}
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {employes.map(emp => {
               const cc = CONTRAT_CONFIG[emp.type_contrat] || CONTRAT_CONFIG['CDI']
@@ -388,7 +392,6 @@ export default function EmployesPage() {
                   style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '13px 16px', display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'box-shadow 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.1)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
-
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} size={36} />
                     <div>
@@ -396,20 +399,10 @@ export default function EmployesPage() {
                       <p style={{ fontSize: 11, color: '#A8A29E', margin: 0 }}>{emp.email} · <span style={{ fontFamily: 'monospace', fontSize: 10, background: '#F0EDE9', color: '#78716C', padding: '1px 5px', borderRadius: 4 }}>{emp.matricule || '—'}</span></p>
                     </div>
                   </div>
-
                   <span style={{ fontSize: 13, color: '#78716C' }}>{emp.poste || '—'}</span>
-
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: cc.bg, color: cc.color, width: 'fit-content' }}>
-                    {emp.type_contrat}
-                  </span>
-
-                  <span style={{ fontSize: 13, color: '#78716C' }}>
-                    {emp.date_entree ? new Date(emp.date_entree).toLocaleDateString('fr-FR') : '—'}
-                  </span>
-
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C', width: 'fit-content' }}>
-                    {emp.statut}
-                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: cc.bg, color: cc.color, width: 'fit-content' }}>{emp.type_contrat}</span>
+                  <span style={{ fontSize: 13, color: '#78716C' }}>{emp.date_entree ? new Date(emp.date_entree).toLocaleDateString('fr-FR') : '—'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C', width: 'fit-content' }}>{emp.statut}</span>
                 </div>
               )
             })}
