@@ -36,7 +36,8 @@ export default function SocietePage() {
   const [success, setSuccess] = useState(false)
   const [form, setForm] = useState({
     raison_sociale: '', numero_voie: '', nom_rue: '',
-    code_postal: '', ville: '', siret: '', code_naf: ''
+    code_postal: '', ville: '', siret: '', code_naf: '',
+    nom_signataire: '', qualite_signataire: '',
   })
 
   useEffect(() => { fetchData() }, [])
@@ -48,9 +49,15 @@ export default function SocietePage() {
     const { data: soc } = await supabase.from('societe').select('*').single()
     setSociete(soc)
     if (soc) setForm({
-      raison_sociale: soc.raison_sociale || '', numero_voie: soc.numero_voie || '',
-      nom_rue: soc.nom_rue || '', code_postal: soc.code_postal || '',
-      ville: soc.ville || '', siret: soc.siret || '', code_naf: soc.code_naf || ''
+      raison_sociale:     soc.raison_sociale     || '',
+      numero_voie:        soc.numero_voie        || '',
+      nom_rue:            soc.nom_rue            || '',
+      code_postal:        soc.code_postal        || '',
+      ville:              soc.ville              || '',
+      siret:              soc.siret              || '',
+      code_naf:           soc.code_naf           || '',
+      nom_signataire:     soc.nom_signataire     || '',
+      qualite_signataire: soc.qualite_signataire || '',
     })
     setLoading(false)
   }
@@ -74,7 +81,6 @@ export default function SocietePage() {
   return (
     <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
-      {/* ACTIONS — sans titre */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '20px' }}>
         {role === 'admin' && !editing && (
           <button onClick={() => setEditing(true)} style={{
@@ -94,13 +100,8 @@ export default function SocietePage() {
         )}
       </div>
 
-      {/* SUCCÈS */}
       {success && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px',
-          padding: '12px 16px', marginBottom: '20px', color: '#16A34A', fontSize: '13.5px', fontWeight: 500
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '12px 16px', marginBottom: '20px', color: '#16A34A', fontSize: '13.5px', fontWeight: 500 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Informations enregistrées avec succès
         </div>
@@ -109,16 +110,9 @@ export default function SocietePage() {
       {/* VUE LECTURE */}
       {!editing && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div style={{
-            background: 'white', borderRadius: '16px',
-            border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            overflow: 'hidden', gridColumn: '1 / -1'
-          }}>
+          <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden', gridColumn: '1 / -1' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
-                background: '#F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0, background: '#F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#78716C" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
@@ -133,10 +127,12 @@ export default function SocietePage() {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <InfoField label="Raison sociale" value={societe?.raison_sociale} />
-              <InfoField label="Adresse complète" value={adresse} />
-              <InfoField label="SIRET" value={societe?.siret} mono />
-              <InfoField label="Code NAF" value={societe?.code_naf} mono />
+              <InfoField label="Raison sociale"    value={societe?.raison_sociale} />
+              <InfoField label="Adresse complète"  value={adresse} />
+              <InfoField label="SIRET"             value={societe?.siret} mono />
+              <InfoField label="Code NAF"          value={societe?.code_naf} mono />
+              <InfoField label="Signataire"        value={societe?.nom_signataire} />
+              <InfoField label="Qualité"           value={societe?.qualite_signataire} />
             </div>
           </div>
         </div>
@@ -144,16 +140,11 @@ export default function SocietePage() {
 
       {/* VUE ÉDITION */}
       {editing && (
-        <div style={{
-          background: 'white', borderRadius: '16px', padding: '28px 32px',
-          border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          maxWidth: '680px'
-        }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 24px' }}>
-            Modifier les informations
-          </h2>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '28px 32px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', maxWidth: '680px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: '0 0 24px' }}>Modifier les informations</h2>
           <form onSubmit={handleSave}>
             <div style={{ display: 'grid', gap: '16px' }}>
+
               <div style={{ fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9' }}>
                 Informations légales
               </div>
@@ -169,6 +160,20 @@ export default function SocietePage() {
                 <div>
                   <label style={S.label}>Code NAF</label>
                   <input value={form.code_naf} onChange={e => setForm({ ...form, code_naf: e.target.value })} placeholder="Ex: 6201Z" style={{ ...S.input, fontFamily: 'monospace' }} />
+                </div>
+              </div>
+
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.1em', paddingBottom: '10px', borderBottom: '1px solid #F0EDE9', marginTop: '8px' }}>
+                Signataire des documents
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={S.label}>Nom du signataire</label>
+                  <input value={form.nom_signataire} onChange={e => setForm({ ...form, nom_signataire: e.target.value })} placeholder="Ex: Jean Dupont" style={S.input} />
+                </div>
+                <div>
+                  <label style={S.label}>Qualité / Titre</label>
+                  <input value={form.qualite_signataire} onChange={e => setForm({ ...form, qualite_signataire: e.target.value })} placeholder="Ex: Directeur Général" style={S.input} />
                 </div>
               </div>
 
@@ -197,20 +202,12 @@ export default function SocietePage() {
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid #F0EDE9' }}>
-                <button type="submit" style={{
-                  padding: '10px 20px', borderRadius: '10px', border: 'none',
-                  background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                <button type="submit" style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
                   onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
                   Enregistrer
                 </button>
-                <button type="button" onClick={() => setEditing(false)} style={{
-                  padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0',
-                  background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
+                <button type="button" onClick={() => setEditing(false)} style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
               </div>
