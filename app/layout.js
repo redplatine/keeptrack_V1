@@ -1,5 +1,5 @@
 import './globals.css'
-import { EntrepriseProvider } from '../lib/EntrepriseContext'
+import { EntrepriseProvider } from './lib/EntrepriseContext'
 
 export const metadata = {
   title: 'KeepTrack',

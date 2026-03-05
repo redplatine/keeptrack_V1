@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useEntreprise } from '../../../lib/EntrepriseContext'
+import { useEntreprise } from '../../lib/EntrepriseContext'
 
 const TYPE_CONFIG = {
   'CP':                  { bg: '#F0F7FF', color: '#2563EB', dot: '#3B82F6', initBg: '#DBEAFE', initColor: '#1D4ED8' },

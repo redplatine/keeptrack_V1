@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useEntreprise } from '../../../lib/EntrepriseContext'
+import { useEntreprise } from '../../lib/EntrepriseContext'
 
 const STATUS_CONFIG = {
   'Ouvert':  { bg: '#FFFBEB', color: '#B45309', dot: '#F59E0B', border: '#FDE68A' },

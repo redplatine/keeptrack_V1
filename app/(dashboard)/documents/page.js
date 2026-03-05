@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useEntreprise } from '../../../lib/EntrepriseContext'
+import { useEntreprise } from '../../lib/EntrepriseContext'
 import jsPDF from 'jspdf'
 
 export default function DocumentsPage() {

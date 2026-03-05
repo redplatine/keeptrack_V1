@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '../lib/supabase'
+import { supabase } from './lib/supabase'
 import { useState, useEffect, useRef } from 'react'
 const SUPER_ADMIN_EMAIL = 'alexandre.aubry.dumand@gmail.com'
 const NAV_ICONS = {

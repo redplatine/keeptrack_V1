@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useEntreprise } from '../../../lib/EntrepriseContext'
+import { useEntreprise } from '../../lib/EntrepriseContext'
 import * as XLSX from 'xlsx'
 
 const joursFeries = [

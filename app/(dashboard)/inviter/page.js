@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { useEntreprise } from '../../../lib/EntrepriseContext'
+import { useEntreprise } from '../../lib/EntrepriseContext'
 
 const S = {
   input: { width: '100%', border: '1px solid #E8E4E0', borderRadius: '10px', padding: '9px 12px', fontSize: '13.5px', background: '#FAF8F6', outline: 'none', color: '#1C1917', fontFamily: 'inherit', boxSizing: 'border-box' },
