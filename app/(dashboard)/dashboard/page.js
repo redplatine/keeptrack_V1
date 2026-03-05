@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
-// ─── COMPOSANTS ───────────────────────────────────────────────────────────────
-
 function Avatar({ id, prenom, nom, size = 36 }) {
   const [error, setError] = useState(false)
   const { data } = supabase.storage.from('avatars').getPublicUrl(`${id}/avatar`)
@@ -20,12 +18,10 @@ function Avatar({ id, prenom, nom, size = 36 }) {
   )
 }
 
-// Carte stat salarié — accent gauche coloré + barre de progression
 function StatCard({ label, value, acquis, pris, accent, bg }) {
   const pct = acquis > 0 ? Math.min(100, Math.round(((pris || 0) / acquis) * 100)) : 0
   return (
     <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E8E4E0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden', position: 'relative' }}>
-      {/* Accent gauche */}
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accent }} />
       <div style={{ padding: '22px 22px 18px 26px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -36,11 +32,9 @@ function StatCard({ label, value, acquis, pris, accent, bg }) {
           {value ?? '—'}<span style={{ fontSize: 18, color: '#C4B5A5', fontWeight: 400, marginLeft: 5 }}>j</span>
         </p>
         <p style={{ fontSize: 12, color: '#A8A29E', margin: '0 0 16px' }}>jours restants</p>
-        {/* Barre */}
         <div style={{ height: 6, background: `${accent}22`, borderRadius: 99, overflow: 'hidden', marginBottom: 12 }}>
           <div style={{ height: '100%', background: accent, borderRadius: 99, width: `${pct}%`, transition: 'width 0.6s ease' }} />
         </div>
-        {/* Acquis / Pris */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {[['Acquis', acquis], ['Pris', pris]].map(([l, v]) => (
             <div key={l} style={{ background: bg, borderRadius: 10, padding: '9px 12px' }}>
@@ -54,7 +48,6 @@ function StatCard({ label, value, acquis, pris, accent, bg }) {
   )
 }
 
-// Ligne salarié (manager) — dépliable au clic
 function LigneSalarie({ emp }) {
   const [open, setOpen] = useState(false)
   const compteurs = [
@@ -68,9 +61,9 @@ function LigneSalarie({ emp }) {
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.1)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
 
-      {/* Ligne principale — cliquable */}
+      {/* Ligne principale */}
       <div onClick={() => setOpen(o => !o)}
-        style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 80px 100px 28px', gap: 8, padding: '13px 16px', alignItems: 'center', cursor: 'pointer' }}>
+        style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px 110px 28px', gap: 8, padding: '13px 16px', alignItems: 'center', cursor: 'pointer' }}>
 
         {/* Identité */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -139,8 +132,6 @@ function LigneSalarie({ emp }) {
   )
 }
 
-// ─── PAGE PRINCIPALE ─────────────────────────────────────────────────────────
-
 export default function DashboardPage() {
   const [soldes, setSoldes] = useState(null)
   const [employe, setEmploye] = useState(null)
@@ -191,9 +182,9 @@ export default function DashboardPage() {
           {/* Stats rapides */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
             {[
-              { label: 'Salariés', value: equipe.length, color: '#6B2F42', bg: '#F9EEF1', icon: '👥' },
+              { label: 'Salariés',            value: equipe.length, color: '#6B2F42', bg: '#F9EEF1', icon: '👥' },
               { label: 'Demandes en attente', value: equipe.reduce((a, e) => a + e.demandesEnAttente, 0), color: '#B45309', bg: '#FFFBEB', icon: '⏳' },
-              { label: 'Année en cours', value: new Date().getFullYear(), color: '#16A34A', bg: '#F0FDF4', icon: '📆' },
+              { label: 'Année en cours',      value: new Date().getFullYear(), color: '#16A34A', bg: '#F0FDF4', icon: '📆' },
             ].map((s, i) => (
               <div key={i} style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
@@ -206,9 +197,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Labels colonnes */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px 80px 100px 28px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px 110px 28px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
-            {['CP N-1', 'CP N', 'RTT', 'Récup'].map((l, i) => (
+            {['Solde CP N-1', 'Solde CP N', 'Solde RTT', 'Solde Récup'].map((l, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, color: ['#8B4A5A', '#4F7EF7', '#16A34A', '#B45309'][i], textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>{l}</span>
             ))}
             <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Statut</span>
@@ -230,10 +221,10 @@ export default function DashboardPage() {
       {!isManager && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {[
-            { label: 'CP N-1', value: soldes?.cp_n1_solde, acquis: soldes?.cp_n1_acquis, pris: soldes?.cp_n1_pris, accent: '#8B4A5A', bg: '#F9EEF1' },
-            { label: 'CP N',   value: soldes?.cp_n_solde,  acquis: soldes?.cp_n_acquis,  pris: soldes?.cp_n_pris,  accent: '#4F7EF7', bg: '#EFF6FF' },
-            { label: 'RTT',    value: soldes?.rtt_solde,   acquis: soldes?.rtt_acquis,   pris: soldes?.rtt_pris,   accent: '#16A34A', bg: '#F0FDF4' },
-            { label: 'Récup',  value: soldes?.recup_solde, acquis: soldes?.recup_acquis, pris: soldes?.recup_pris, accent: '#B45309', bg: '#FFFBEB' },
+            { label: 'Solde CP N-1', value: soldes?.cp_n1_solde, acquis: soldes?.cp_n1_acquis, pris: soldes?.cp_n1_pris, accent: '#8B4A5A', bg: '#F9EEF1' },
+            { label: 'Solde CP N',   value: soldes?.cp_n_solde,  acquis: soldes?.cp_n_acquis,  pris: soldes?.cp_n_pris,  accent: '#4F7EF7', bg: '#EFF6FF' },
+            { label: 'Solde RTT',    value: soldes?.rtt_solde,   acquis: soldes?.rtt_acquis,   pris: soldes?.rtt_pris,   accent: '#16A34A', bg: '#F0FDF4' },
+            { label: 'Solde Récup',  value: soldes?.recup_solde, acquis: soldes?.recup_acquis, pris: soldes?.recup_pris, accent: '#B45309', bg: '#FFFBEB' },
           ].map((s, i) => <StatCard key={i} {...s} />)}
         </div>
       )}
