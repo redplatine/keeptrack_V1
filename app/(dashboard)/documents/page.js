@@ -377,7 +377,7 @@ export default function DocumentsPage() {
   const isAdminOrManager = currentRole === 'admin' || currentRole === 'manager'
 
   return (
-    <div style={{ padding: '0 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
+    <div style={{ padding: '24px 40px 40px', fontFamily: "'Inter', -apple-system, sans-serif", minHeight: '100vh' }}>
 
       {/* SÉLECTEUR SALARIÉ */}
       {isAdminOrManager && (
