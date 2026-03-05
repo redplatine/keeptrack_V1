@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { useState, useEffect, useRef } from 'react'
-
+const SUPER_ADMIN_EMAIL = 'alexandre.aubry.dumand@gmail.com'
 const NAV_ICONS = {
   '/profil': (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -56,7 +56,12 @@ const NAV_ICONS = {
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
     <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
   </svg>
-),
+  ),
+  '/superadmin': (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+  </svg>
+  ),
 }
 
 const SIDEBAR = {
@@ -89,6 +94,7 @@ const PAGE_META = {
   '/messages':   { title: 'Messages & Support',   sub: () => 'Consultez et répondez aux messages' },
   '/contact':    { title: 'Contact & Support',    sub: () => 'Envoyez un message à votre service RH' },
   '/societe':    { title: 'Société',              sub: () => 'Informations de votre entreprise' },
+  '/superadmin': { title: 'Super Admin', sub: () => 'Gestion des entreprises KeepTrack' },
 }
 
 const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -118,8 +124,10 @@ export default function DashboardLayout({ children }) {
   }, [])
 
   const fetchRole = async () => {
+    const [userEmail, setUserEmail] = useState('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    setUserEmail(user.email)
     const { data: emp } = await supabase.from('employes').select('role, prenom, nom').eq('email', user.email).single()
     if (emp) {
       setRole(emp.role)
@@ -187,9 +195,14 @@ export default function DashboardLayout({ children }) {
     { href: '/contact',    label: 'Contact & Support', roles: ['salarie'] },
     { href: '/societe',    label: 'Société',           roles: ['admin', 'manager', 'salarie'] },
     { href: '/documents', label: 'Documents', roles: ['admin', 'manager', 'salarie'] },
+    { href: '/superadmin', label: 'Super Admin', roles: ['__superadmin__'] },
   ]
 
-  const navFiltres = navItems.filter(item => role && item.roles.includes(role))
+  const isSuperAdmin = userEmail === SUPER_ADMIN_EMAIL
+const navFiltres = [
+  ...navItems.filter(item => role && item.roles.includes(role)),
+  ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', roles: [] }] : [])
+]
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.salarie
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
   const isAdmin = role === 'admin' || role === 'manager'
