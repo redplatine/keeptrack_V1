@@ -94,20 +94,20 @@ function LigneCompteur({ emp, solde, onDelta }) {
         </div>
       </div>
 
-      {/* CP N-1, CP N, RTT — chacun en mini groupe Acq/Pris/Solde */}
+      {/* CP N-1, CP N, RTT — chacun en mini groupe Acquis/Pris/Solde */}
       {GROUPES.map(g => (
         <div key={g.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acq</span>
-              <EditCell value={s[`${g.key}_acquis`] ?? null} color={g.color} bg={g.bg} small onSave={d => onDelta(emp.id, `${g.key}_acquis`, d)} />
+          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Acquis</span>
+              <EditCell value={s[`${g.key}_acquis`] ?? null} color={g.color} bg={g.bg} onSave={d => onDelta(emp.id, `${g.key}_acquis`, d)} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 10, fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pris</span>
-              <EditCell value={s[`${g.key}_pris`] ?? null} color={g.color} bg={g.bg} small onSave={d => onDelta(emp.id, `${g.key}_pris`, d)} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pris</span>
+              <EditCell value={s[`${g.key}_pris`] ?? null} color={g.color} bg={g.bg} onSave={d => onDelta(emp.id, `${g.key}_pris`, d)} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Solde</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Solde</span>
               <SoldeDisplay value={s[`${g.key}_solde`] ?? null} color={g.color} bg={g.bg} />
             </div>
           </div>
