@@ -61,6 +61,37 @@ function QuickStat({ label, value, icon, bg }) {
   )
 }
 
+// Cellule avec solde + détail acquis/pris
+function SoldeCell({ solde, acquis, pris, color, bg }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        title="Cliquer pour voir le détail"
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          minWidth: '44px', height: '28px', borderRadius: '8px',
+          fontSize: '14px', fontWeight: 700, background: bg, color, padding: '0 10px',
+          cursor: 'pointer', border: `1px solid ${open ? color : 'transparent'}`,
+          transition: 'border 0.15s',
+        }}>
+        {solde ?? '—'}
+      </div>
+      {open && (
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <span style={{ fontSize: '10px', fontWeight: 600, color: '#A8A29E', background: '#FAF8F6', padding: '2px 6px', borderRadius: '5px' }}>
+            A: {acquis ?? '—'}
+          </span>
+          <span style={{ fontSize: '10px', fontWeight: 600, color: '#A8A29E', background: '#FAF8F6', padding: '2px 6px', borderRadius: '5px' }}>
+            P: {pris ?? '—'}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const [soldes, setSoldes] = useState(null)
   const [employe, setEmploye] = useState(null)
@@ -122,7 +153,9 @@ export default function DashboardPage() {
             <div style={{ padding: '22px 28px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: 0 }}>Compteurs de l'équipe</h2>
-                <p style={{ fontSize: '12px', color: '#A8A29E', marginTop: '2px' }}>{equipe.length} salarié(s) · {new Date().getFullYear()}</p>
+                <p style={{ fontSize: '12px', color: '#A8A29E', marginTop: '2px' }}>
+                  {equipe.length} salarié(s) · {new Date().getFullYear()} · cliquez sur un solde pour voir acquis / pris
+                </p>
               </div>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} title="Données à jour" />
             </div>
@@ -177,22 +210,27 @@ export default function DashboardPage() {
 
                     <td style={{ padding: '16px 20px', fontSize: '13px', color: '#78716C' }}>{emp.poste || '—'}</td>
 
-                    {[
-                      { val: emp.solde?.cp_n1_solde, bg: '#F9EEF1', color: '#8B4A5A' },
-                      { val: emp.solde?.cp_n_solde,  bg: '#EFF6FF', color: '#4F7EF7' },
-                      { val: emp.solde?.rtt_solde,   bg: '#F0FDF4', color: '#16A34A' },
-                      { val: emp.solde?.recup_solde, bg: '#FFFBEB', color: '#B45309' },
-                    ].map(({ val, bg, color }, i) => (
-                      <td key={i} style={{ padding: '16px 20px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          minWidth: '44px', height: '28px', borderRadius: '8px',
-                          fontSize: '14px', fontWeight: 700, background: bg, color, padding: '0 10px'
-                        }}>
-                          {val ?? '—'}
-                        </span>
-                      </td>
-                    ))}
+                    {/* CP N-1, CP N, RTT avec détail acquis/pris au clic */}
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <SoldeCell solde={emp.solde?.cp_n1_solde} acquis={emp.solde?.cp_n1_acquis} pris={emp.solde?.cp_n1_pris} color="#8B4A5A" bg="#F9EEF1" />
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <SoldeCell solde={emp.solde?.cp_n_solde} acquis={emp.solde?.cp_n_acquis} pris={emp.solde?.cp_n_pris} color="#4F7EF7" bg="#EFF6FF" />
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <SoldeCell solde={emp.solde?.rtt_solde} acquis={emp.solde?.rtt_acquis} pris={emp.solde?.rtt_pris} color="#16A34A" bg="#F0FDF4" />
+                    </td>
+
+                    {/* Récup — solde uniquement, pas de détail */}
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        minWidth: '44px', height: '28px', borderRadius: '8px',
+                        fontSize: '14px', fontWeight: 700, background: '#FFFBEB', color: '#B45309', padding: '0 10px'
+                      }}>
+                        {emp.solde?.recup_solde ?? '—'}
+                      </span>
+                    </td>
 
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       {emp.demandesEnAttente > 0 ? (
@@ -216,21 +254,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* VUE SALARIÉ — 4 cartes sur 2 colonnes */}
+      {/* VUE SALARIÉ */}
       {!isManager && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-          <StatCard label="CP N-1 restants"       value={soldes?.cp_n1_solde}
-            acquis={soldes?.cp_n1_acquis} pris={soldes?.cp_n1_pris}
-            accent="#8B4A5A" iconBg="#F9EEF1" />
-          <StatCard label="CP N restants"          value={soldes?.cp_n_solde}
-            acquis={soldes?.cp_n_acquis}  pris={soldes?.cp_n_pris}
-            accent="#4F7EF7" iconBg="#EFF6FF" />
-          <StatCard label="RTT restants"           value={soldes?.rtt_solde}
-            acquis={soldes?.rtt_acquis}   pris={soldes?.rtt_pris}
-            accent="#16A34A" iconBg="#F0FDF4" />
-          <StatCard label="Récupération restants"  value={soldes?.recup_solde}
-            acquis={soldes?.recup_acquis} pris={soldes?.recup_pris}
-            accent="#B45309" iconBg="#FFFBEB" />
+          <StatCard label="CP N-1 restants"      value={soldes?.cp_n1_solde}  acquis={soldes?.cp_n1_acquis} pris={soldes?.cp_n1_pris}  accent="#8B4A5A" iconBg="#F9EEF1" />
+          <StatCard label="CP N restants"         value={soldes?.cp_n_solde}   acquis={soldes?.cp_n_acquis}  pris={soldes?.cp_n_pris}   accent="#4F7EF7" iconBg="#EFF6FF" />
+          <StatCard label="RTT restants"          value={soldes?.rtt_solde}    acquis={soldes?.rtt_acquis}   pris={soldes?.rtt_pris}    accent="#16A34A" iconBg="#F0FDF4" />
+          <StatCard label="Récupération restants" value={soldes?.recup_solde}  acquis={soldes?.recup_acquis} pris={soldes?.recup_pris}  accent="#B45309" iconBg="#FFFBEB" />
         </div>
       )}
     </div>
