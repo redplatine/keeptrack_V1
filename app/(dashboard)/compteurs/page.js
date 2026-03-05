@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import * as XLSX from 'xlsx'
 
 function getAvatarUrl(id) {
   const { data } = supabase.storage.from('avatars').getPublicUrl(`${id}/avatar`)
@@ -42,12 +43,7 @@ function EditCell({ value, onSave, color, bg, small = false }) {
         onChange={e => setDelta(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') { setEditing(false); setDelta('') } }}
         placeholder="±"
-        style={{
-          width: '54px', padding: '3px 5px', borderRadius: '6px',
-          border: `1.5px solid ${color}`, outline: 'none',
-          fontSize: '12px', fontWeight: 600, color, background: bg,
-          fontFamily: 'inherit', textAlign: 'center',
-        }}
+        style={{ width: '54px', padding: '3px 5px', borderRadius: '6px', border: `1.5px solid ${color}`, outline: 'none', fontSize: '12px', fontWeight: 600, color, background: bg, fontFamily: 'inherit', textAlign: 'center' }}
       />
       <button onClick={handleSave} disabled={loading} style={{ width: '20px', height: '20px', borderRadius: '5px', border: 'none', background: color, color: 'white', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {loading ? '…' : '✓'}
@@ -72,24 +68,16 @@ function EditCell({ value, onSave, color, bg, small = false }) {
   )
 }
 
-// Groupe de 3 cellules Acquis / Pris / Solde pour un compteur
-function CompteurGroup({ s, keyPrefix, color, bg, onSaveAcquis, onSavePris, onSaveSolde }) {
-  const labelStyle = { fontSize: '10px', fontWeight: 600, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', display: 'block', textAlign: 'center' }
+function SoldeDisplay({ value, color, bg }) {
   return (
-    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'flex-end' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <span style={labelStyle}>Acq</span>
-        <EditCell value={s[`${keyPrefix}_acquis`] ?? null} color={color} bg={bg} small onSave={onSaveAcquis} />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <span style={labelStyle}>Pris</span>
-        <EditCell value={s[`${keyPrefix}_pris`] ?? null} color={color} bg={bg} small onSave={onSavePris} />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <span style={{ ...labelStyle, color, fontWeight: 700 }}>Solde</span>
-        <EditCell value={s[`${keyPrefix}_solde`] ?? null} color={color} bg={bg} onSave={onSaveSolde} />
-      </div>
-    </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: '44px', height: '26px', borderRadius: '7px',
+      fontSize: '13px', fontWeight: 700, background: bg, color, padding: '0 8px',
+      border: `1px solid ${color}22`,
+    }}>
+      {value ?? '—'}
+    </span>
   )
 }
 
@@ -115,19 +103,27 @@ export default function CompteursPage() {
     setLoading(false)
   }
 
-  // Mise à jour d'une colonne précise (acquis, pris ou solde) par delta
   const handleDelta = async (employeId, field, delta) => {
     const solde = soldes[employeId]
+    const current = solde?.[field] || 0
+    const newVal = Math.max(0, current + delta)
+
+    const prefixes = ['cp_n1', 'cp_n', 'rtt']
+    const matchedPrefix = prefixes.find(p => field.startsWith(p))
+    const isAcquisOrPris = matchedPrefix && (field.endsWith('_acquis') || field.endsWith('_pris'))
+
+    let updates = { [field]: newVal }
+
+    if (isAcquisOrPris && solde) {
+      const acquis = field.endsWith('_acquis') ? newVal : (solde[`${matchedPrefix}_acquis`] || 0)
+      const pris   = field.endsWith('_pris')   ? newVal : (solde[`${matchedPrefix}_pris`]   || 0)
+      updates[`${matchedPrefix}_solde`] = Math.max(0, acquis - pris)
+    }
+
     if (solde) {
-      const current = solde[field] || 0
-      await supabase.from('soldes_conges').update({
-        [field]: Math.max(0, current + delta)
-      }).eq('id', solde.id)
+      await supabase.from('soldes_conges').update(updates).eq('id', solde.id)
     } else {
-      await supabase.from('soldes_conges').insert({
-        employe_id: employeId, annee,
-        [field]: Math.max(0, delta),
-      })
+      await supabase.from('soldes_conges').insert({ employe_id: employeId, annee, ...updates })
     }
     await fetchAll()
   }
@@ -154,6 +150,46 @@ export default function CompteursPage() {
     await fetchAll()
   }
 
+  const handleExportExcel = () => {
+    const data = employes.map(emp => {
+      const s = soldes[emp.id] || {}
+      return {
+        'Matricule':        emp.matricule || '—',
+        'Nom':              emp.nom || '',
+        'Prénom':           emp.prenom || '',
+        'Poste':            emp.poste || '',
+        // CP N-1
+        'CP N-1 Acquis':    s.cp_n1_acquis ?? 0,
+        'CP N-1 Pris':      s.cp_n1_pris   ?? 0,
+        'CP N-1 Solde':     s.cp_n1_solde  ?? 0,
+        // CP N
+        'CP N Acquis':      s.cp_n_acquis  ?? 0,
+        'CP N Pris':        s.cp_n_pris    ?? 0,
+        'CP N Solde':       s.cp_n_solde   ?? 0,
+        // RTT
+        'RTT Acquis':       s.rtt_acquis   ?? 0,
+        'RTT Pris':         s.rtt_pris     ?? 0,
+        'RTT Solde':        s.rtt_solde    ?? 0,
+        // Récup
+        'Récup Acquis':     s.recup_acquis ?? 0,
+        'Récup Pris':       s.recup_pris   ?? 0,
+        'Récup Solde':      s.recup_solde  ?? 0,
+      }
+    })
+
+    const ws = XLSX.utils.json_to_sheet(data)
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
+      { wch: 14 }, { wch: 12 }, { wch: 13 },
+      { wch: 14 }, { wch: 12 }, { wch: 13 },
+      { wch: 14 }, { wch: 12 }, { wch: 13 },
+      { wch: 14 }, { wch: 12 }, { wch: 13 },
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, `Compteurs ${annee}`)
+    XLSX.writeFile(wb, `compteurs_${annee}_${new Date().toISOString().split('T')[0]}.xlsx`)
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
@@ -161,9 +197,9 @@ export default function CompteursPage() {
   )
 
   const GROUPES = [
-    { key: 'cp_n1', label: 'CP N-1', color: '#8B4A5A', bg: '#F9EEF1', headerBg: '#F5ECF0' },
-    { key: 'cp_n',  label: 'CP N',   color: '#4F7EF7', bg: '#EFF6FF', headerBg: '#EAF2FF' },
-    { key: 'rtt',   label: 'RTT',    color: '#16A34A', bg: '#F0FDF4', headerBg: '#E8FAF0' },
+    { key: 'cp_n1', label: 'CP N-1', color: '#8B4A5A', bg: '#F9EEF1', headerBg: '#F5ECF0', borderColor: '#F5ECF0' },
+    { key: 'cp_n',  label: 'CP N',   color: '#4F7EF7', bg: '#EFF6FF', headerBg: '#EAF2FF', borderColor: '#EAF2FF' },
+    { key: 'rtt',   label: 'RTT',    color: '#16A34A', bg: '#F0FDF4', headerBg: '#E8FAF0', borderColor: '#E8FAF0' },
   ]
 
   return (
@@ -196,13 +232,31 @@ export default function CompteursPage() {
         </div>
       )}
 
+      {/* HEADER TABLEAU */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div />
+        <button onClick={handleExportExcel} style={{
+          display: 'flex', alignItems: 'center', gap: '7px',
+          padding: '9px 16px', borderRadius: '10px', border: '1px solid #E8E4E0',
+          background: 'white', color: '#44403C', fontSize: '13.5px', fontWeight: 500,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
+          onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Exporter Excel
+        </button>
+      </div>
+
       {/* TABLEAU COMPTEURS */}
       <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 28px', borderBottom: '1px solid #F0EDE9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2 style={{ fontSize: '15px', fontWeight: 600, color: '#1C1917', margin: 0 }}>Compteurs — {annee}</h2>
             <p style={{ fontSize: '12px', color: '#A8A29E', marginTop: '2px' }}>
-              Cliquez sur une valeur pour l'ajuster (positif pour ajouter, négatif pour retirer)
+              Cliquez sur Acq ou Pris pour ajuster — le Solde se calcule automatiquement
             </p>
           </div>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} title="Données à jour" />
@@ -210,13 +264,12 @@ export default function CompteursPage() {
 
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            {/* Ligne 1 : groupes */}
             <tr style={{ background: '#FAF8F6' }}>
               <th rowSpan={2} style={{ padding: '12px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9', verticalAlign: 'middle' }}>
                 Salarié
               </th>
               {GROUPES.map(g => (
-                <th key={g.key} colSpan={3} style={{ padding: '10px 8px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9', borderLeft: '1px solid #F0EDE9', background: g.headerBg }}>
+                <th key={g.key} colSpan={3} style={{ padding: '10px 8px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: g.color, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9', borderLeft: `1px solid ${g.borderColor}`, background: g.headerBg }}>
                   {g.label}
                 </th>
               ))}
@@ -224,17 +277,16 @@ export default function CompteursPage() {
                 Récup
               </th>
             </tr>
-            {/* Ligne 2 : sous-colonnes */}
             <tr style={{ background: '#FAF8F6' }}>
               {GROUPES.map(g => (
-                ['Acq', 'Pris', 'Solde'].map(sub => (
+                ['Acq', 'Pris', 'Solde'].map((sub, si) => (
                   <th key={`${g.key}-${sub}`} style={{
                     padding: '6px 8px', textAlign: 'center',
                     fontSize: '10px', fontWeight: 600,
                     color: sub === 'Solde' ? g.color : '#C4B5A5',
                     textTransform: 'uppercase', letterSpacing: '0.04em',
                     borderBottom: '1px solid #F0EDE9',
-                    borderLeft: sub === 'Acq' ? '1px solid #F0EDE9' : 'none',
+                    borderLeft: si === 0 ? `1px solid ${g.borderColor}` : 'none',
                     background: g.headerBg,
                   }}>
                     {sub}
@@ -263,45 +315,42 @@ export default function CompteursPage() {
                   </td>
 
                   {/* CP N-1 */}
-                  {[
-                    { field: 'cp_n1_acquis', color: '#8B4A5A', bg: '#F9EEF1' },
-                    { field: 'cp_n1_pris',   color: '#8B4A5A', bg: '#F9EEF1' },
-                    { field: 'cp_n1_solde',  color: '#8B4A5A', bg: '#F9EEF1' },
-                  ].map(({ field, color, bg }) => (
-                    <td key={field} style={{ padding: '10px 8px', textAlign: 'center', borderLeft: field.endsWith('acquis') ? '1px solid #F5ECF0' : 'none' }}>
-                      <EditCell value={s[field] ?? null} color={color} bg={bg} small={!field.endsWith('solde')}
-                        onSave={(delta) => handleDelta(emp.id, field, delta)} />
-                    </td>
-                  ))}
+                  <td style={{ padding: '10px 8px', textAlign: 'center', borderLeft: '1px solid #F5ECF0' }}>
+                    <EditCell value={s.cp_n1_acquis ?? null} color="#8B4A5A" bg="#F9EEF1" small onSave={(d) => handleDelta(emp.id, 'cp_n1_acquis', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <EditCell value={s.cp_n1_pris ?? null} color="#8B4A5A" bg="#F9EEF1" small onSave={(d) => handleDelta(emp.id, 'cp_n1_pris', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <SoldeDisplay value={s.cp_n1_solde ?? null} color="#8B4A5A" bg="#F9EEF1" />
+                  </td>
 
                   {/* CP N */}
-                  {[
-                    { field: 'cp_n_acquis', color: '#4F7EF7', bg: '#EFF6FF' },
-                    { field: 'cp_n_pris',   color: '#4F7EF7', bg: '#EFF6FF' },
-                    { field: 'cp_n_solde',  color: '#4F7EF7', bg: '#EFF6FF' },
-                  ].map(({ field, color, bg }) => (
-                    <td key={field} style={{ padding: '10px 8px', textAlign: 'center', borderLeft: field.endsWith('acquis') ? '1px solid #EAF2FF' : 'none' }}>
-                      <EditCell value={s[field] ?? null} color={color} bg={bg} small={!field.endsWith('solde')}
-                        onSave={(delta) => handleDelta(emp.id, field, delta)} />
-                    </td>
-                  ))}
+                  <td style={{ padding: '10px 8px', textAlign: 'center', borderLeft: '1px solid #EAF2FF' }}>
+                    <EditCell value={s.cp_n_acquis ?? null} color="#4F7EF7" bg="#EFF6FF" small onSave={(d) => handleDelta(emp.id, 'cp_n_acquis', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <EditCell value={s.cp_n_pris ?? null} color="#4F7EF7" bg="#EFF6FF" small onSave={(d) => handleDelta(emp.id, 'cp_n_pris', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <SoldeDisplay value={s.cp_n_solde ?? null} color="#4F7EF7" bg="#EFF6FF" />
+                  </td>
 
                   {/* RTT */}
-                  {[
-                    { field: 'rtt_acquis', color: '#16A34A', bg: '#F0FDF4' },
-                    { field: 'rtt_pris',   color: '#16A34A', bg: '#F0FDF4' },
-                    { field: 'rtt_solde',  color: '#16A34A', bg: '#F0FDF4' },
-                  ].map(({ field, color, bg }) => (
-                    <td key={field} style={{ padding: '10px 8px', textAlign: 'center', borderLeft: field.endsWith('acquis') ? '1px solid #E8FAF0' : 'none' }}>
-                      <EditCell value={s[field] ?? null} color={color} bg={bg} small={!field.endsWith('solde')}
-                        onSave={(delta) => handleDelta(emp.id, field, delta)} />
-                    </td>
-                  ))}
+                  <td style={{ padding: '10px 8px', textAlign: 'center', borderLeft: '1px solid #E8FAF0' }}>
+                    <EditCell value={s.rtt_acquis ?? null} color="#16A34A" bg="#F0FDF4" small onSave={(d) => handleDelta(emp.id, 'rtt_acquis', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <EditCell value={s.rtt_pris ?? null} color="#16A34A" bg="#F0FDF4" small onSave={(d) => handleDelta(emp.id, 'rtt_pris', d)} />
+                  </td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                    <SoldeDisplay value={s.rtt_solde ?? null} color="#16A34A" bg="#F0FDF4" />
+                  </td>
 
-                  {/* Récup — solde uniquement */}
+                  {/* Récup — solde uniquement éditable */}
                   <td style={{ padding: '10px 16px', textAlign: 'center', borderLeft: '1px solid #F0EDE9' }}>
-                    <EditCell value={s['recup_solde'] ?? null} color="#B45309" bg="#FFFBEB"
-                      onSave={(delta) => handleDelta(emp.id, 'recup_solde', delta)} />
+                    <EditCell value={s.recup_solde ?? null} color="#B45309" bg="#FFFBEB"
+                      onSave={(d) => handleDelta(emp.id, 'recup_solde', d)} />
                   </td>
                 </tr>
               )
@@ -313,7 +362,7 @@ export default function CompteursPage() {
       {/* LÉGENDE */}
       <div style={{ marginTop: '16px', padding: '14px 20px', background: 'rgba(255,255,255,0.7)', borderRadius: '12px', border: '1px solid #E8E4E0' }}>
         <p style={{ fontSize: '12px', color: '#78716C', margin: 0 }}>
-          💡 <strong>Saisie :</strong> entrez un nombre positif pour ajouter des jours, négatif pour en retirer. <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: '4px', fontSize: '11px' }}>Entrée</kbd> pour confirmer, <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: '4px', fontSize: '11px' }}>Échap</kbd> pour annuler. Les colonnes <strong>Acq</strong> et <strong>Pris</strong> sont également éditables.
+          💡 <strong>Acq</strong> et <strong>Pris</strong> sont éditables — le <strong>Solde</strong> se calcule automatiquement (Acquis − Pris). Entrez un nombre positif pour ajouter, négatif pour retirer. <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: '4px', fontSize: '11px' }}>Entrée</kbd> pour confirmer, <kbd style={{ background: '#F0EDE9', padding: '1px 5px', borderRadius: '4px', fontSize: '11px' }}>Échap</kbd> pour annuler.
         </p>
       </div>
     </div>
