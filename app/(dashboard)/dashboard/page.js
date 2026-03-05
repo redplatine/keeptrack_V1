@@ -58,10 +58,10 @@ function StatCard({ label, value, acquis, pris, accent, bg }) {
 function LigneSalarie({ emp }) {
   const [open, setOpen] = useState(false)
   const compteurs = [
-    { label: 'CP N-1', s: emp.solde?.cp_n1_solde, a: emp.solde?.cp_n1_acquis, p: emp.solde?.cp_n1_pris, color: '#8B4A5A', bg: '#F9EEF1' },
-    { label: 'CP N',   s: emp.solde?.cp_n_solde,  a: emp.solde?.cp_n_acquis,  p: emp.solde?.cp_n_pris,  color: '#4F7EF7', bg: '#EFF6FF' },
-    { label: 'RTT',    s: emp.solde?.rtt_solde,   a: emp.solde?.rtt_acquis,   p: emp.solde?.rtt_pris,   color: '#16A34A', bg: '#F0FDF4' },
-    { label: 'Récup',  s: emp.solde?.recup_solde, a: emp.solde?.recup_acquis, p: emp.solde?.recup_pris, color: '#B45309', bg: '#FFFBEB' },
+    { label: 'SOLDE CP N-1', s: emp.solde?.cp_n1_solde, a: emp.solde?.cp_n1_acquis, p: emp.solde?.cp_n1_pris, color: '#8B4A5A', bg: '#F9EEF1' },
+    { label: 'SOLDE CP N',   s: emp.solde?.cp_n_solde,  a: emp.solde?.cp_n_acquis,  p: emp.solde?.cp_n_pris,  color: '#4F7EF7', bg: '#EFF6FF' },
+    { label: 'SOLDE RTT',    s: emp.solde?.rtt_solde,   a: emp.solde?.rtt_acquis,   p: emp.solde?.rtt_pris,   color: '#16A34A', bg: '#F0FDF4' },
+    { label: 'SOLDE Récup',  s: emp.solde?.recup_solde, a: emp.solde?.recup_acquis, p: emp.solde?.recup_pris, color: '#B45309', bg: '#FFFBEB' },
   ]
   return (
     <div style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden', transition: 'box-shadow 0.15s' }}
