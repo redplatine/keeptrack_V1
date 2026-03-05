@@ -1,4 +1,5 @@
 import './globals.css'
+import { EntrepriseProvider } from '../lib/EntrepriseContext'
 
 export const metadata = {
   title: 'KeepTrack',
@@ -8,7 +9,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <EntrepriseProvider>
+          {children}
+        </EntrepriseProvider>
+      </body>
     </html>
   )
 }

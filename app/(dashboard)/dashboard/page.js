@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useEntreprise } from '../../../lib/EntrepriseContext'
 
 function Avatar({ id, prenom, nom, size = 36 }) {
   const [error, setError] = useState(false)
@@ -60,12 +61,8 @@ function LigneSalarie({ emp }) {
     <div style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden', transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.1)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
-
-      {/* Ligne principale */}
       <div onClick={() => setOpen(o => !o)}
         style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px 110px 28px', gap: 8, padding: '13px 16px', alignItems: 'center', cursor: 'pointer' }}>
-
-        {/* Identité */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} size={34} />
           <div>
@@ -73,8 +70,6 @@ function LigneSalarie({ emp }) {
             <p style={{ fontSize: 11, color: '#A8A29E', margin: 0 }}>{emp.poste} · <span style={{ fontFamily: 'monospace', fontSize: 10, background: '#F0EDE9', color: '#78716C', padding: '1px 5px', borderRadius: 4 }}>{emp.matricule || '—'}</span></p>
           </div>
         </div>
-
-        {/* Soldes */}
         {compteurs.map((x, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: x.color, background: x.bg, padding: '3px 10px', borderRadius: 8, minWidth: 40, textAlign: 'center', display: 'block' }}>
@@ -87,16 +82,12 @@ function LigneSalarie({ emp }) {
             )}
           </div>
         ))}
-
-        {/* Demandes */}
         <div style={{ textAlign: 'center' }}>
           {emp.demandesEnAttente > 0
             ? <span style={{ fontSize: 11, fontWeight: 700, background: '#FFFBEB', color: '#B45309', padding: '4px 10px', borderRadius: 20, border: '1px solid #FDE68A', whiteSpace: 'nowrap' }}>⏳ {emp.demandesEnAttente}</span>
             : <span style={{ color: '#BBF7D0', fontSize: 16 }}>✓</span>
           }
         </div>
-
-        {/* Chevron */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C4B5A5" strokeWidth="2.5"
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
@@ -104,8 +95,6 @@ function LigneSalarie({ emp }) {
           </svg>
         </div>
       </div>
-
-      {/* Détail dépliable */}
       {open && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid #F5F0F2' }}>
           {compteurs.map((x, i) => (
@@ -137,28 +126,68 @@ export default function DashboardPage() {
   const [employe, setEmploye] = useState(null)
   const [equipe, setEquipe] = useState([])
   const [loading, setLoading] = useState(true)
+  const { entrepriseId } = useEntreprise()
 
-  useEffect(() => { fetchDashboard() }, [])
+  useEffect(() => {
+    if (entrepriseId) fetchDashboard()
+  }, [entrepriseId])
 
   const fetchDashboard = async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: emp } = await supabase.from('employes').select('*').eq('email', user.email).single()
+
+    // ── Employé connecté
+    const { data: emp } = await supabase
+      .from('employes')
+      .select('*')
+      .eq('email', user.email)
+      .eq('entreprise_id', entrepriseId)
+      .single()
+
     setEmploye(emp)
+
     if (emp) {
       const annee = new Date().getFullYear()
       const isManager = emp.role === 'manager' || emp.role === 'admin'
+
       if (isManager) {
-        const { data: employes } = await supabase.from('employes').select('id, nom, prenom, poste, matricule').order('nom')
-        const { data: tousLesSoldes } = await supabase.from('soldes_conges').select('*').eq('annee', annee)
-        const { data: absEnAttente } = await supabase.from('absences').select('employe_id').eq('statut', 'En attente')
+        // ── Tous les employés de l'entreprise
+        const { data: employes } = await supabase
+          .from('employes')
+          .select('id, nom, prenom, poste, matricule')
+          .eq('entreprise_id', entrepriseId)
+          .order('nom')
+
+        // ── Soldes de l'entreprise uniquement
+        const { data: tousLesSoldes } = await supabase
+          .from('soldes_conges')
+          .select('*')
+          .eq('entreprise_id', entrepriseId)
+          .eq('annee', annee)
+
+        // ── Absences en attente de l'entreprise uniquement
+        const { data: absEnAttente } = await supabase
+          .from('absences')
+          .select('employe_id')
+          .eq('entreprise_id', entrepriseId)
+          .eq('statut', 'En attente')
+
         const equipeData = (employes || []).map(e => ({
           ...e,
           solde: tousLesSoldes?.find(s => s.employe_id === e.id),
           demandesEnAttente: absEnAttente?.filter(a => a.employe_id === e.id).length || 0,
         })).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+
         setEquipe(equipeData)
       } else {
-        const { data: soldesData } = await supabase.from('soldes_conges').select('*').eq('employe_id', emp.id).eq('annee', annee).single()
+        // ── Soldes du salarié connecté
+        const { data: soldesData } = await supabase
+          .from('soldes_conges')
+          .select('*')
+          .eq('employe_id', emp.id)
+          .eq('entreprise_id', entrepriseId)
+          .eq('annee', annee)
+          .single()
+
         setSoldes(soldesData)
       }
     }
@@ -179,7 +208,6 @@ export default function DashboardPage() {
       {/* ── VUE MANAGER ── */}
       {isManager && (
         <div>
-          {/* Stats rapides */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
             {[
               { label: 'Salariés',            value: equipe.length, color: '#6B2F42', bg: '#F9EEF1', icon: '👥' },
@@ -195,8 +223,6 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-
-          {/* Labels colonnes */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 110px 110px 110px 28px', gap: 8, padding: '10px 16px', marginBottom: 6, background: 'white', borderRadius: 10, border: '1px solid #E8E4E0' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Salarié</span>
             {['Solde CP N-1', 'Solde CP N', 'Solde RTT', 'Solde Récup'].map((l, i) => (
@@ -205,12 +231,9 @@ export default function DashboardPage() {
             <span style={{ fontSize: 11, fontWeight: 700, color: '#78716C', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'center' }}>Statut</span>
             <span />
           </div>
-
-          {/* Lignes salariés */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {equipe.map(emp => <LigneSalarie key={emp.id} emp={emp} />)}
           </div>
-
           <p style={{ fontSize: 11, color: '#C4B5A5', textAlign: 'center', marginTop: 12 }}>
             Cliquez sur une ligne pour afficher le détail acquis / pris / solde
           </p>
