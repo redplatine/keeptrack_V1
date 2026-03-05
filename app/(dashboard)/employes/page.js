@@ -14,12 +14,11 @@ function Avatar({ id, prenom, nom, size = 36 }) {
   const url = getAvatarUrl(id)
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
   return (
-    <div style={{ width: size, height: size, borderRadius: '10px', flexShrink: 0, background: '#F2E6E9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {!error ? (
-        <img src={`${url}?t=${id}`} alt={`${prenom} ${nom}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setError(true)} />
-      ) : (
-        <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
-      )}
+    <div style={{ width: size, height: size, borderRadius: Math.round(size * 0.28), flexShrink: 0, background: 'linear-gradient(135deg, #F2E6E9, #E8D5D9)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {!error
+        ? <img src={`${url}?t=${id}`} alt={`${prenom} ${nom}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setError(true)} />
+        : <span style={{ fontSize: size * 0.33, fontWeight: 700, color: '#6B2F42' }}>{initiales}</span>
+      }
     </div>
   )
 }
@@ -136,17 +135,11 @@ export default function EmployesPage() {
       nb_jours_annuels: form.forfait_jours ? (parseInt(form.nb_jours_annuels) || null) : null,
       nb_heures_semaine: !form.forfait_jours ? (parseFloat(form.nb_heures_semaine) || null) : null,
     }
-
     if (employeSelectionne) {
       const { error } = await supabase.from('employes').update(formNettoye).eq('id', employeSelectionne.id)
       if (error) { alert('Erreur modification : ' + error.message); return }
-      const dateEntreeChangee = form.date_entree !== employeSelectionne.date_entree
-      const rttAnnuelChange = parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)
-      if (dateEntreeChangee) {
-        await supabase.rpc('calculer_acquisitions')
-      } else if (rttAnnuelChange) {
-        await recalculerRTT(employeSelectionne.id, parseFloat(form.rtt_annuel) || 0)
-      }
+      if (form.date_entree !== employeSelectionne.date_entree) await supabase.rpc('calculer_acquisitions')
+      else if (parseFloat(form.rtt_annuel) !== parseFloat(employeSelectionne.rtt_annuel)) await recalculerRTT(employeSelectionne.id, parseFloat(form.rtt_annuel) || 0)
     } else {
       const { data: newEmp, error } = await supabase.from('employes').insert([formNettoye]).select().single()
       if (error) { alert('Erreur création : ' + error.message); return }
@@ -169,8 +162,8 @@ export default function EmployesPage() {
           await supabase.from('soldes_conges').insert({
             employe_id: newEmp.id, annee,
             cp_n1_acquis: cp_n1, cp_n1_solde: cp_n1,
-            cp_n_acquis: cp_n,   cp_n_solde: cp_n,
-            rtt_acquis: rtt,     rtt_solde: rtt,
+            cp_n_acquis: cp_n, cp_n_solde: cp_n,
+            rtt_acquis: rtt, rtt_solde: rtt,
             recup_acquis: recup, recup_solde: recup,
           })
         }
@@ -208,46 +201,28 @@ export default function EmployesPage() {
 
   const handleExportExcel = () => {
     const data = employes.map(emp => ({
-      'Matricule':             emp.matricule || '',
-      'Nom':                   emp.nom || '',
-      'Prénom':                emp.prenom || '',
-      'Email':                 emp.email || '',
-      'Date de naissance':     emp.date_naissance || '',
-      'N° Sécurité sociale':   emp.numero_secu || '',
-      'CP de naissance':       emp.cp_naissance || '',
-      'Lieu de naissance':     emp.lieu_naissance || '',
-      'Numéro de voie':        emp.numero_voie || '',
-      'Nom de rue':            emp.nom_rue || '',
-      'Code postal':           emp.code_postal || '',
-      'Ville':                 emp.ville || '',
-      'Poste':                 emp.poste || '',
-      'Département':           emp.departement || '',
-      'Type de contrat':       emp.type_contrat || '',
-      'Statut':                emp.statut || '',
-      'Temps de travail':      emp.temps_travail || '',
-      'Date d\'entrée':        emp.date_entree || '',
-      'RTT annuel':            emp.rtt_annuel || 0,
-      'Forfait jours':         emp.forfait_jours ? 'Oui' : 'Non',
-      'Nb jours annuels':      emp.forfait_jours ? (emp.nb_jours_annuels || '') : '',
-      'Nb heures / semaine':   !emp.forfait_jours ? (emp.nb_heures_semaine || '') : '',
-      'Salaire brut annuel':   emp.salaire_brut || '',
+      'Matricule': emp.matricule || '', 'Nom': emp.nom || '', 'Prénom': emp.prenom || '',
+      'Email': emp.email || '', 'Date de naissance': emp.date_naissance || '',
+      'N° Sécurité sociale': emp.numero_secu || '', 'CP de naissance': emp.cp_naissance || '',
+      'Lieu de naissance': emp.lieu_naissance || '', 'Numéro de voie': emp.numero_voie || '',
+      'Nom de rue': emp.nom_rue || '', 'Code postal': emp.code_postal || '', 'Ville': emp.ville || '',
+      'Poste': emp.poste || '', 'Département': emp.departement || '',
+      'Type de contrat': emp.type_contrat || '', 'Statut': emp.statut || '',
+      'Temps de travail': emp.temps_travail || '', "Date d'entrée": emp.date_entree || '',
+      'RTT annuel': emp.rtt_annuel || 0, 'Forfait jours': emp.forfait_jours ? 'Oui' : 'Non',
+      'Nb jours annuels': emp.forfait_jours ? (emp.nb_jours_annuels || '') : '',
+      'Nb heures / semaine': !emp.forfait_jours ? (emp.nb_heures_semaine || '') : '',
+      'Salaire brut annuel': emp.salaire_brut || '',
     }))
     const ws = XLSX.utils.json_to_sheet(data)
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 16 },
-      { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 },
-      { wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 16 },
-      { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 14 },
-      { wch: 16 }, { wch: 18 }, { wch: 16 },
-    ]
+    ws['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }]
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Employés')
     XLSX.writeFile(wb, `employes_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
   const F = (key, extra = {}) => ({
-    value: form[key],
-    onChange: e => setForm({ ...form, [key]: e.target.value }),
+    value: form[key], onChange: e => setForm({ ...form, [key]: e.target.value }),
     style: { ...S.input, ...extra }
   })
 
@@ -259,21 +234,14 @@ export default function EmployesPage() {
       {/* ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <p style={{ fontSize: '13px', color: '#78716C', margin: 0 }}>
-          {employes.length} salarié(s) · double-cliquez pour ouvrir une fiche
+          {employes.length} salarié(s) · double-cliquez sur une carte pour modifier
         </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           {isAdmin && (
-            <button onClick={handleExportExcel} style={{
-              display: 'flex', alignItems: 'center', gap: '7px',
-              padding: '9px 16px', borderRadius: '10px', border: '1px solid #E8E4E0',
-              background: 'white', color: '#44403C', fontSize: '13.5px', fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
+            <button onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 16px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#44403C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
               onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
               onMouseLeave={e => e.currentTarget.style.background = 'white'}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exporter Excel
             </button>
           )}
@@ -281,9 +249,7 @@ export default function EmployesPage() {
             style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 16px', borderRadius: '10px', border: 'none', background: '#1C1917', color: 'white', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
             onMouseEnter={e => e.currentTarget.style.background = '#44403C'}
             onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Ajouter un employé
           </button>
         </div>
@@ -291,7 +257,7 @@ export default function EmployesPage() {
 
       {/* FORMULAIRE */}
       {showForm && (
-        <div style={{ background: 'white', borderRadius: '16px', padding: '28px 32px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '24px' }}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '28px 32px', border: '1px solid #E8E4E0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {employeSelectionne && <Avatar id={employeSelectionne.id} prenom={employeSelectionne.prenom} nom={employeSelectionne.nom} size={40} />}
@@ -304,14 +270,7 @@ export default function EmployesPage() {
             </div>
             {employeSelectionne && (
               <button onClick={handleEnvoyerInvitation} disabled={invitationLoading || invitationEnvoyee}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '7px',
-                  padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
-                  cursor: invitationEnvoyee ? 'default' : 'pointer', fontFamily: 'inherit',
-                  border: invitationEnvoyee ? '1px solid #BBF7D0' : '1px solid #E8E4E0',
-                  background: invitationEnvoyee ? '#F0FDF4' : '#FAF8F6',
-                  color: invitationEnvoyee ? '#16A34A' : '#44403C',
-                }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: invitationEnvoyee ? 'default' : 'pointer', fontFamily: 'inherit', border: invitationEnvoyee ? '1px solid #BBF7D0' : '1px solid #E8E4E0', background: invitationEnvoyee ? '#F0FDF4' : '#FAF8F6', color: invitationEnvoyee ? '#16A34A' : '#44403C' }}>
                 {invitationLoading ? '⏳ Envoi…' : invitationEnvoyee ? '✓ Invitation envoyée' : '✉ Envoyer invitation'}
               </button>
             )}
@@ -319,7 +278,6 @@ export default function EmployesPage() {
 
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
               <div style={S.sectionTitle}>Informations personnelles</div>
               <div><label style={S.label}>Matricule</label><input {...F('matricule')} placeholder="Ex: MAT001" /></div>
               <div><label style={S.label}>Nom *</label><input required {...F('nom')} /></div>
@@ -328,10 +286,7 @@ export default function EmployesPage() {
               <div><label style={S.label}>Date de naissance</label><input type="date" {...F('date_naissance')} /></div>
               <div><label style={S.label}>Lieu de naissance</label><input {...F('lieu_naissance')} placeholder="Ex: Paris" /></div>
               <div><label style={S.label}>CP de naissance</label><input {...F('cp_naissance')} placeholder="Ex: 75001" /></div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={S.label}>Numéro de sécurité sociale</label>
-                <input {...F('numero_secu')} placeholder="Ex: 1 85 05 75 123 456 78" />
-              </div>
+              <div style={{ gridColumn: '1 / -1' }}><label style={S.label}>Numéro de sécurité sociale</label><input {...F('numero_secu')} placeholder="Ex: 1 85 05 75 123 456 78" /></div>
 
               <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Adresse</div>
               <div><label style={S.label}>Numéro de voie</label><input {...F('numero_voie')} /></div>
@@ -343,54 +298,33 @@ export default function EmployesPage() {
               <div><label style={S.label}>Poste</label><input {...F('poste')} /></div>
               <div><label style={S.label}>Département</label><input {...F('departement')} /></div>
               <div><label style={S.label}>Date d'entrée *</label><input required type="date" {...F('date_entree')} /></div>
-              <div>
-                <label style={S.label}>Type de contrat</label>
+              <div><label style={S.label}>Type de contrat</label>
                 <select {...F('type_contrat')} style={{ ...S.input, cursor: 'pointer' }}>
                   <option>CDI</option><option>CDD</option><option>Alternance</option><option>Stage</option>
                 </select>
               </div>
-              <div>
-                <label style={S.label}>Statut</label>
+              <div><label style={S.label}>Statut</label>
                 <select {...F('statut')} style={{ ...S.input, cursor: 'pointer' }}>
                   <option>Cadre</option><option>Non-cadre</option>
                 </select>
               </div>
-              <div>
-                <label style={S.label}>Temps de travail</label>
+              <div><label style={S.label}>Temps de travail</label>
                 <select {...F('temps_travail')} style={{ ...S.input, cursor: 'pointer' }}>
                   <option>Temps plein</option><option>Temps partiel</option>
                 </select>
               </div>
-
-              {/* FORFAIT JOURS */}
-              <div>
-                <label style={S.label}>Salarié au forfait jours</label>
-                <select
-                  value={form.forfait_jours ? 'oui' : 'non'}
-                  onChange={e => setForm({ ...form, forfait_jours: e.target.value === 'oui', nb_jours_annuels: '', nb_heures_semaine: '' })}
-                  style={{ ...S.input, cursor: 'pointer' }}>
-                  <option value="non">Non</option>
-                  <option value="oui">Oui</option>
+              <div><label style={S.label}>Salarié au forfait jours</label>
+                <select value={form.forfait_jours ? 'oui' : 'non'} onChange={e => setForm({ ...form, forfait_jours: e.target.value === 'oui', nb_jours_annuels: '', nb_heures_semaine: '' })} style={{ ...S.input, cursor: 'pointer' }}>
+                  <option value="non">Non</option><option value="oui">Oui</option>
                 </select>
               </div>
               <div>
                 {form.forfait_jours ? (
-                  <>
-                    <label style={S.label}>Nombre de jours annuels</label>
-                    <input type="number" value={form.nb_jours_annuels}
-                      onChange={e => setForm({ ...form, nb_jours_annuels: e.target.value })}
-                      placeholder="Ex: 218" style={S.input} />
-                  </>
+                  <><label style={S.label}>Nombre de jours annuels</label><input type="number" value={form.nb_jours_annuels} onChange={e => setForm({ ...form, nb_jours_annuels: e.target.value })} placeholder="Ex: 218" style={S.input} /></>
                 ) : (
-                  <>
-                    <label style={S.label}>Nombre d'heures par semaine</label>
-                    <input type="number" step="0.5" value={form.nb_heures_semaine}
-                      onChange={e => setForm({ ...form, nb_heures_semaine: e.target.value })}
-                      placeholder="Ex: 35" style={S.input} />
-                  </>
+                  <><label style={S.label}>Nombre d'heures par semaine</label><input type="number" step="0.5" value={form.nb_heures_semaine} onChange={e => setForm({ ...form, nb_heures_semaine: e.target.value })} placeholder="Ex: 35" style={S.input} /></>
                 )}
               </div>
-
               <div><label style={S.label}>RTT annuel</label><input type="number" {...F('rtt_annuel')} placeholder="0 si pas de RTT" /></div>
               <div><label style={S.label}>Salaire brut annuel (€)</label><input type="number" {...F('salaire_brut')} placeholder="Ex: 35000" /></div>
 
@@ -398,30 +332,11 @@ export default function EmployesPage() {
                 <>
                   <div style={{ ...S.sectionTitle, marginTop: '8px' }}>Reprise des compteurs (optionnel)</div>
                   <div style={{ gridColumn: '1 / -1', marginTop: '-8px', marginBottom: '8px' }}>
-                    <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>
-                      Pour les salariés ayant déjà des compteurs à reprendre. Les ajustements ultérieurs se font via l'onglet <strong>Compteurs</strong>.
-                    </p>
+                    <p style={{ fontSize: '12px', color: '#A8A29E', margin: 0 }}>Pour les salariés ayant déjà des compteurs à reprendre. Les ajustements ultérieurs se font via l'onglet <strong>Compteurs</strong>.</p>
                   </div>
-                  <div>
-                    <label style={S.label}>CP N-1 (j)</label>
-                    <input type="number" step="0.5" value={form.cp_n1_reprise || 0}
-                      onChange={e => setForm({ ...form, cp_n1_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
-                  </div>
-                  <div>
-                    <label style={S.label}>CP N (j)</label>
-                    <input type="number" step="0.5" value={form.cp_n_reprise || 0}
-                      onChange={e => setForm({ ...form, cp_n_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
-                  </div>
-                  <div>
-                    <label style={S.label}>RTT (j)</label>
-                    <input type="number" step="0.5" value={form.rtt_reprise || 0}
-                      onChange={e => setForm({ ...form, rtt_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
-                  </div>
-                  <div>
-                    <label style={S.label}>Récupération (j)</label>
-                    <input type="number" step="0.5" value={form.recup_reprise || 0}
-                      onChange={e => setForm({ ...form, recup_reprise: parseFloat(e.target.value) || 0 })} style={S.input} />
-                  </div>
+                  {[['cp_n1_reprise', 'CP N-1 (j)'], ['cp_n_reprise', 'CP N (j)'], ['rtt_reprise', 'RTT (j)'], ['recup_reprise', 'Récupération (j)']].map(([key, label]) => (
+                    <div key={key}><label style={S.label}>{label}</label><input type="number" step="0.5" value={form[key] || 0} onChange={e => setForm({ ...form, [key]: parseFloat(e.target.value) || 0 })} style={S.input} /></div>
+                  ))}
                 </>
               )}
 
@@ -431,18 +346,12 @@ export default function EmployesPage() {
                   onMouseLeave={e => e.currentTarget.style.background = '#1C1917'}>
                   {employeSelectionne ? 'Enregistrer les modifications' : 'Enregistrer'}
                 </button>
-                <button type="button" onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }}
-                  style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  Annuler
-                </button>
+                <button type="button" onClick={() => { setShowForm(false); setEmployeSelectionne(null); setInvitationEnvoyee(false); resetForm() }} style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #E8E4E0', background: 'white', color: '#78716C', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
                 {employeSelectionne && (
-                  <button type="button" onClick={handleSupprimer}
-                    style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                  <button type="button" onClick={handleSupprimer} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#DC2626', fontSize: '13.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#FEE2E2'}
                     onMouseLeave={e => e.currentTarget.style.background = '#FEF2F2'}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                    </svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                     Supprimer
                   </button>
                 )}
@@ -452,67 +361,61 @@ export default function EmployesPage() {
         </div>
       )}
 
-      {/* TABLEAU */}
-      <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+      {/* LISTE EMPLOYÉS — cartes espacées */}
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #E8E4E0', borderTopColor: '#8B4A5A', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : employes.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px', background: 'white', borderRadius: 16, border: '1px solid #E8E4E0' }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>👥</div>
+          <p style={{ color: '#A8A29E', fontSize: 14 }}>Aucun employé pour l'instant</p>
+        </div>
+      ) : (
+        <>
+          {/* Labels colonnes */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, padding: '0 16px', marginBottom: 6 }}>
+            {['Salarié', 'Poste', 'Contrat', 'Entrée', 'Statut'].map((l, i) => (
+              <span key={i} style={{ fontSize: 10, fontWeight: 700, color: '#C4B5A5', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</span>
+            ))}
           </div>
-        ) : employes.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>👥</div>
-            <p style={{ color: '#A8A29E', fontSize: '14px' }}>Aucun employé pour l'instant</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {employes.map(emp => {
+              const cc = CONTRAT_CONFIG[emp.type_contrat] || CONTRAT_CONFIG['CDI']
+              return (
+                <div key={emp.id} onDoubleClick={() => handleDoubleClick(emp)}
+                  style={{ background: 'white', borderRadius: 14, border: '1px solid #E8E4E0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', padding: '13px 16px', display: 'grid', gridTemplateColumns: '1fr 160px 120px 120px 100px', gap: 8, alignItems: 'center', cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(74,35,48,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)'}>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} size={36} />
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1917', margin: 0 }}>{emp.prenom} {emp.nom}</p>
+                      <p style={{ fontSize: 11, color: '#A8A29E', margin: 0 }}>{emp.email} · <span style={{ fontFamily: 'monospace', fontSize: 10, background: '#F0EDE9', color: '#78716C', padding: '1px 5px', borderRadius: 4 }}>{emp.matricule || '—'}</span></p>
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: 13, color: '#78716C' }}>{emp.poste || '—'}</span>
+
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: cc.bg, color: cc.color, width: 'fit-content' }}>
+                    {emp.type_contrat}
+                  </span>
+
+                  <span style={{ fontSize: 13, color: '#78716C' }}>
+                    {emp.date_entree ? new Date(emp.date_entree).toLocaleDateString('fr-FR') : '—'}
+                  </span>
+
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C', width: 'fit-content' }}>
+                    {emp.statut}
+                  </span>
+                </div>
+              )
+            })}
           </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#FAF8F6' }}>
-                {['Matricule', 'Nom', 'Poste', 'Contrat', 'Entrée', 'Statut'].map(h => (
-                  <th key={h} style={{ padding: '12px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#A8A29E', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #F0EDE9' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {employes.map(emp => {
-                const cc = CONTRAT_CONFIG[emp.type_contrat] || CONTRAT_CONFIG['CDI']
-                return (
-                  <tr key={emp.id} onDoubleClick={() => handleDoubleClick(emp)}
-                    style={{ borderBottom: '1px solid #FAF8F6', transition: 'background 0.1s', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#FAF8F6'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '15px 24px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: 'monospace', background: '#F0EDE9', color: '#78716C', padding: '4px 9px', borderRadius: '6px' }}>
-                        {emp.matricule || '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px 24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <Avatar id={emp.id} prenom={emp.prenom} nom={emp.nom} />
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: 500, color: '#1C1917' }}>{emp.prenom} {emp.nom}</div>
-                          <div style={{ fontSize: '12px', color: '#A8A29E' }}>{emp.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.poste || '—'}</td>
-                    <td style={{ padding: '15px 24px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: cc.bg, color: cc.color }}>
-                        {emp.type_contrat}
-                      </span>
-                    </td>
-                    <td style={{ padding: '15px 24px', fontSize: '13px', color: '#78716C' }}>{emp.date_entree || '—'}</td>
-                    <td style={{ padding: '15px 24px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 10px', borderRadius: '6px', background: emp.statut === 'Cadre' ? '#F9EEF1' : '#F0EDE9', color: emp.statut === 'Cadre' ? '#6B2F42' : '#78716C' }}>
-                        {emp.statut}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </>
+      )}
     </div>
   )
 }
