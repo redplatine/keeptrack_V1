@@ -52,7 +52,7 @@ export default function CalendrierPage() {
       .from('employes').select('*')
       .eq('email', user.email)
       .eq('entreprise_id', entrepriseId)
-      .single()
+      .maybesingle()
     setEmploye(emp)
 
     let absData = []
@@ -71,13 +71,11 @@ export default function CalendrierPage() {
       absData = data || []
     }
 
-    const { data: employesData } = await supabase
-      .from('employes').select('id, nom, prenom')
-      .eq('entreprise_id', entrepriseId)
-
-    absData = absData.map(abs => ({ ...abs, employes: employesData?.find(e => e.id === abs.employe_id) || null }))
-    setAbsences(absData)
-    setLoading(false)
+const employesMap = Object.fromEntries((employesData || []).map(e => [e.id, e]))
+absData = absData.map(abs => ({
+  ...abs,
+  employes: employesMap[abs.employe_id] || null
+}))
   }
 
   const annee = moisActuel.getFullYear()

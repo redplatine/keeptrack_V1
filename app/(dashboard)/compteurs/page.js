@@ -130,34 +130,68 @@ export default function CompteursPage() {
 
   useEffect(() => { if (entrepriseId) fetchAll() }, [entrepriseId])
 
-  const fetchAll = async () => {
-    setLoading(true)
+const fetchAll = async () => {
+  if (!entrepriseId) return
 
-    const { data: emps } = await supabase
-      .from('employes').select('id, nom, prenom, poste, matricule')
-      .eq('entreprise_id', entrepriseId)
-      .order('nom')
+  setLoading(true)
 
-    const { data: sols } = await supabase
-      .from('soldes_conges').select('*')
-      .eq('entreprise_id', entrepriseId)
-      .eq('annee', annee)
+  try {
 
-    const { data: dems } = await supabase
-      .from('demandes_recup').select('*, employes(nom, prenom)')
-      .eq('entreprise_id', entrepriseId)
-      .eq('statut', 'En attente')
-      .order('created_at', { ascending: false })
+    const [empsRes, solsRes, demsRes] = await Promise.all([
+
+      supabase
+        .from('employes')
+        .select('id, nom, prenom, poste, matricule')
+        .eq('entreprise_id', entrepriseId)
+        .order('nom'),
+
+      supabase
+        .from('soldes_conges')
+        .select('*')
+        .eq('entreprise_id', entrepriseId)
+        .eq('annee', annee),
+
+      supabase
+        .from('demandes_recup')
+        .select('*, employes(nom, prenom)')
+        .eq('entreprise_id', entrepriseId)
+        .eq('statut', 'En attente')
+        .order('created_at', { ascending: false })
+
+    ])
+
+    if (empsRes.error) throw empsRes.error
+    if (solsRes.error) throw solsRes.error
+    if (demsRes.error) throw demsRes.error
 
     const soldesMap = {}
-    for (const s of sols || []) soldesMap[s.employe_id] = s
+
+    for (const s of solsRes.data || []) {
+      soldesMap[s.employe_id] = s
+    }
+
+    setEmployes(empsRes.data || [])
     setSoldes(soldesMap)
-    setEmployes(emps || [])
-    setDemandes(dems || [])
+    setDemandes(demsRes.data || [])
+
+  } catch (err) {
+
+    console.error('Erreur chargement compteurs:', err)
+
+  } finally {
+
     setLoading(false)
+
   }
 
-  const handleDelta = async (employeId, field, delta) => {
+  }
+
+const handleDelta = async (employeId, field, delta) => {
+
+  if (!entrepriseId) return
+
+  try {
+
     const solde = soldes[employeId]
     const current = solde?.[field] || 0
     const newVal = Math.max(0, current + delta)
@@ -167,38 +201,101 @@ export default function CompteursPage() {
     const isAcquisOrPris = matchedPrefix && (field.endsWith('_acquis') || field.endsWith('_pris'))
 
     let updates = { [field]: newVal }
+
     if (isAcquisOrPris && solde) {
-      const acquis = field.endsWith('_acquis') ? newVal : (solde[`${matchedPrefix}_acquis`] || 0)
-      const pris   = field.endsWith('_pris')   ? newVal : (solde[`${matchedPrefix}_pris`]   || 0)
+
+      const acquis = field.endsWith('_acquis')
+        ? newVal
+        : (solde[`${matchedPrefix}_acquis`] || 0)
+
+      const pris = field.endsWith('_pris')
+        ? newVal
+        : (solde[`${matchedPrefix}_pris`] || 0)
+
       updates[`${matchedPrefix}_solde`] = Math.max(0, acquis - pris)
+
     }
 
     if (solde) {
-      await supabase.from('soldes_conges').update(updates).eq('id', solde.id)
+
+      const { error } = await supabase
+        .from('soldes_conges')
+        .update(updates)
+        .eq('id', solde.id)
+
+      if (error) throw error
+
     } else {
-      await supabase.from('soldes_conges').insert({
-        employe_id: employeId, entreprise_id: entrepriseId, annee, ...updates
-      })
+
+      const { error } = await supabase
+        .from('soldes_conges')
+        .insert({
+          employe_id: employeId,
+          entreprise_id: entrepriseId,
+          annee,
+          ...updates
+        })
+
+      if (error) throw error
+
     }
+
     await fetchAll()
+
+  } catch (err) {
+
+    console.error('Erreur modification compteur:', err)
+
   }
 
-  const handleValiderDemande = async (demande) => {
+}
+
+const handleValiderDemande = async (demande) => {
+
+  if (!entrepriseId) return
+
+  try {
+
     const solde = soldes[demande.employe_id]
+
     if (solde) {
-      await supabase.from('soldes_conges').update({
-        recup_acquis: (solde.recup_acquis || 0) + demande.nb_jours,
-        recup_solde:  (solde.recup_solde  || 0) + demande.nb_jours,
-      }).eq('id', solde.id)
+
+      await supabase
+        .from('soldes_conges')
+        .update({
+          recup_acquis: (solde.recup_acquis || 0) + demande.nb_jours,
+          recup_solde: (solde.recup_solde || 0) + demande.nb_jours
+        })
+        .eq('id', solde.id)
+
     } else {
-      await supabase.from('soldes_conges').insert({
-        employe_id: demande.employe_id, entreprise_id: entrepriseId,
-        annee, recup_acquis: demande.nb_jours, recup_solde: demande.nb_jours
-      })
+
+      await supabase
+        .from('soldes_conges')
+        .insert({
+          employe_id: demande.employe_id,
+          entreprise_id: entrepriseId,
+          annee,
+          recup_acquis: demande.nb_jours,
+          recup_solde: demande.nb_jours
+        })
+
     }
-    await supabase.from('demandes_recup').update({ statut: 'Validée' }).eq('id', demande.id)
+
+    await supabase
+      .from('demandes_recup')
+      .update({ statut: 'Validée' })
+      .eq('id', demande.id)
+
     await fetchAll()
+
+  } catch (err) {
+
+    console.error('Erreur validation demande:', err)
+
   }
+
+}
 
   const handleRefuserDemande = async (id) => {
     await supabase.from('demandes_recup').update({ statut: 'Refusée' }).eq('id', id)
