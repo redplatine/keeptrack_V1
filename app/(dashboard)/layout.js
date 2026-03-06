@@ -130,6 +130,7 @@ export default function DashboardLayout({ children }) {
   const router = useRouter()
 
   const [role, setRole] = useState(null)
+  const [roleLoading, setRoleLoading] = useState(true)
   const [prenom, setPrenom] = useState('')
   const [nom, setNom] = useState('')
   const [entrepriseId, setEntrepriseId] = useState(null)
@@ -205,48 +206,77 @@ export default function DashboardLayout({ children }) {
   }, [entrepriseId, role])
 
   const fetchRole = async () => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+    try {
+      setRoleLoading(true)
 
-    if (userError) {
-      console.error('Erreur auth getUser:', userError)
-      return
-    }
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-    if (!user) return
+      if (userError) {
+        console.error('Erreur auth getUser:', userError)
+        return
+      }
 
-    setUserEmail(user.email || '')
+      if (!user) {
+        console.error('Aucun utilisateur connecté')
+        return
+      }
 
-    const { data: emp, error: empError } = await supabase
-      .from('employes')
-      .select('role, prenom, nom, entreprise_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
+      setUserEmail(user.email || '')
 
-    if (empError) {
-      console.error('Erreur récupération rôle layout:', empError)
-      return
-    }
+      let { data: emp, error: empError } = await supabase
+        .from('employes')
+        .select('role, prenom, nom, entreprise_id, email, user_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
 
-    if (!emp) {
-      console.error('Aucune fiche employé trouvée pour user_id =', user.id)
-      return
-    }
+      if (empError) {
+        console.error('Erreur récupération employé via user_id:', empError)
+      }
 
-    setRole(emp.role)
-    setPrenom(emp.prenom || '')
-    setNom(emp.nom || '')
-    setEntrepriseId(emp.entreprise_id || null)
+      if (!emp && user.email) {
+        const { data: empByEmail, error: empByEmailError } = await supabase
+          .from('employes')
+          .select('role, prenom, nom, entreprise_id, email, user_id')
+          .ilike('email', user.email)
+          .maybeSingle()
 
-    if (emp.role === 'admin' || emp.role === 'manager') {
-      await fetchAbsencesEnAttente(emp.entreprise_id)
-    }
+        if (empByEmailError) {
+          console.error('Erreur récupération employé via email:', empByEmailError)
+        } else {
+          emp = empByEmail
+        }
+      }
 
-    if (emp.role === 'admin') {
-      await fetchMessagesOuverts(emp.entreprise_id)
-      await fetchDemandesRecup(emp.entreprise_id)
+      if (!emp) {
+        console.error('Aucune fiche employé trouvée pour cet utilisateur', {
+          authUserId: user.id,
+          authEmail: user.email,
+        })
+        return
+      }
+
+      console.log('Employé trouvé dans layout:', emp)
+
+      setRole(emp.role || null)
+      setPrenom(emp.prenom || '')
+      setNom(emp.nom || '')
+      setEntrepriseId(emp.entreprise_id || null)
+
+      if (emp.role === 'admin' || emp.role === 'manager') {
+        await fetchAbsencesEnAttente(emp.entreprise_id)
+      }
+
+      if (emp.role === 'admin') {
+        await fetchMessagesOuverts(emp.entreprise_id)
+        await fetchDemandesRecup(emp.entreprise_id)
+      }
+    } catch (err) {
+      console.error('Erreur fetchRole layout:', err)
+    } finally {
+      setRoleLoading(false)
     }
   }
 
@@ -339,10 +369,12 @@ export default function DashboardLayout({ children }) {
 
   const isSuperAdmin = userEmail === SUPER_ADMIN_EMAIL
 
-  const navFiltres = [
-    ...navItems.filter((item) => role && item.roles.includes(role)),
-    ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', roles: [] }] : []),
-  ]
+  const navFiltres = roleLoading
+    ? []
+    : [
+        ...navItems.filter((item) => role && item.roles.includes(role)),
+        ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', roles: [] }] : []),
+      ]
 
   const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.salarie
   const initiales = `${prenom?.[0] || ''}${nom?.[0] || ''}`.toUpperCase()
@@ -603,60 +635,81 @@ export default function DashboardLayout({ children }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          <p style={{ fontSize: '10px', fontWeight: 600, color: SIDEBAR.textMuted, letterSpacing: '0.08em', padding: '4px 10px 8px', textTransform: 'uppercase' }}>
+          <p
+            style={{
+              fontSize: '10px',
+              fontWeight: 600,
+              color: SIDEBAR.textMuted,
+              letterSpacing: '0.08em',
+              padding: '4px 10px 8px',
+              textTransform: 'uppercase',
+            }}
+          >
             Navigation
           </p>
 
-          {navFiltres.map((item) => {
-            const isActive = pathname === item.href
+          {roleLoading ? (
+            <div style={{ padding: '8px 10px', color: SIDEBAR.textMuted, fontSize: '13px' }}>
+              Chargement...
+            </div>
+          ) : navFiltres.length === 0 ? (
+            <div style={{ padding: '8px 10px', color: '#FCA5A5', fontSize: '13px' }}>
+              Aucun menu disponible
+            </div>
+          ) : (
+            navFiltres.map((item) => {
+              const isActive = pathname === item.href
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center justify-between rounded-xl transition-all duration-150"
-                style={{
-                  padding: '8px 10px',
-                  background: isActive ? SIDEBAR.activeBg : 'transparent',
-                  color: isActive ? SIDEBAR.activeColor : SIDEBAR.textPrimary,
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: '13.5px',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = SIDEBAR.hoverBg
-                    e.currentTarget.style.color = '#F0E8EA'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = SIDEBAR.textPrimary
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span style={{ color: isActive ? SIDEBAR.activeColor : SIDEBAR.iconMuted }}>{NAV_ICONS[item.href]}</span>
-                  <span>{item.label}</span>
-                </div>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between rounded-xl transition-all duration-150"
+                  style={{
+                    padding: '8px 10px',
+                    background: isActive ? SIDEBAR.activeBg : 'transparent',
+                    color: isActive ? SIDEBAR.activeColor : SIDEBAR.textPrimary,
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: '13.5px',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = SIDEBAR.hoverBg
+                      e.currentTarget.style.color = '#F0E8EA'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = SIDEBAR.textPrimary
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span style={{ color: isActive ? SIDEBAR.activeColor : SIDEBAR.iconMuted }}>
+                      {NAV_ICONS[item.href]}
+                    </span>
+                    <span>{item.label}</span>
+                  </div>
 
-                {item.badge > 0 && (
-                  <span
-                    style={{
-                      background: 'rgba(220,38,38,0.25)',
-                      color: '#FCA5A5',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '1px 7px',
-                      borderRadius: '20px',
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+                  {item.badge > 0 && (
+                    <span
+                      style={{
+                        background: 'rgba(220,38,38,0.25)',
+                        color: '#FCA5A5',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '1px 7px',
+                        borderRadius: '20px',
+                      }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              )
+            })
+          )}
         </nav>
 
         <div className="px-3 pb-5" style={{ borderTop: `1px solid ${SIDEBAR.border}`, paddingTop: '12px' }}>
