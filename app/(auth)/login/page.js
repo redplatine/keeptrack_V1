@@ -46,6 +46,24 @@ export default function LoginPage() {
         .maybeSingle()
 
       if (empError) {
+  console.error('Erreur récupération employé via user_id:', empError)
+}
+
+if (!emp && user.email) {
+  const { data: empByEmail, error: empByEmailError } = await supabase
+    .from('employes')
+    .select('role, prenom, nom, user_id, email')
+    .ilike('email', user.email)
+    .maybeSingle()
+
+  if (empByEmailError) {
+    console.error('Erreur récupération employé via email:', empByEmailError)
+  } else {
+    emp = empByEmail
+  }
+}
+
+      if (empError) {
         console.error('Erreur récupération employé après login:', empError)
         await supabase.auth.signOut()
         setError("Impossible de charger votre profil employé")
