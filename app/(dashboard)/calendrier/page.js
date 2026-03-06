@@ -45,31 +45,79 @@ export default function CalendrierPage() {
 
   useEffect(() => { if (entrepriseId) fetchData() }, [entrepriseId])
 
-  const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+const fetchData = async () => {
+  try {
+    setLoading(true)
 
-    const { data: emp } = await supabase
-      .from('employes').select('*')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setEmploye(null)
+      setAbsences([])
+      return
+    }
+
+    const { data: emp, error: empError } = await supabase
+      .from('employes')
+      .select('*')
       .eq('email', user.email)
       .eq('entreprise_id', entrepriseId)
-      .maybesingle()
+      .maybeSingle()
+
+    if (empError) {
+      console.error('Erreur employé calendrier:', empError)
+      setEmploye(null)
+      setAbsences([])
+      return
+    }
+
     setEmploye(emp)
 
+    if (!emp) {
+      setAbsences([])
+      return
+    }
+
     let absData = []
-    if (emp?.role === 'salarie') {
-      const { data } = await supabase
-        .from('absences').select('*')
+
+    if (emp.role === 'salarie') {
+      const { data, error } = await supabase
+        .from('absences')
+        .select('*, employes(nom, prenom)')
         .eq('employe_id', emp.id)
         .eq('entreprise_id', entrepriseId)
         .neq('statut', 'Refusée')
+
+      if (error) {
+        console.error('Erreur absences salarié:', error)
+        setAbsences([])
+        return
+      }
+
       absData = data || []
     } else {
-      const { data } = await supabase
-        .from('absences').select('*')
+      const { data, error } = await supabase
+        .from('absences')
+        .select('*, employes(nom, prenom)')
         .eq('entreprise_id', entrepriseId)
         .neq('statut', 'Refusée')
+
+      if (error) {
+        console.error('Erreur absences manager/admin:', error)
+        setAbsences([])
+        return
+      }
+
       absData = data || []
     }
+
+    setAbsences(absData)
+  } catch (err) {
+    console.error('Erreur calendrier:', err)
+    setAbsences([])
+  } finally {
+    setLoading(false)
+  }
+
 
 const employesMap = Object.fromEntries((employesData || []).map(e => [e.id, e]))
 absData = absData.map(abs => ({
