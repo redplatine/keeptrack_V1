@@ -3,35 +3,71 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
-const EntrepriseContext = createContext(null)
+const EntrepriseContext = createContext({
+  entrepriseId: null,
+  loading: true,
+})
 
 export function EntrepriseProvider({ children }) {
   const [entrepriseId, setEntrepriseId] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchEntreprise = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setLoading(false); return }
+  const fetchEntreprise = async () => {
+    try {
+      setLoading(true)
 
-      const { data: emp } = await supabase
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error('Erreur auth getUser:', userError)
+        setEntrepriseId(null)
+        setLoading(false)
+        return
+      }
+
+      if (!user) {
+        setEntrepriseId(null)
+        setLoading(false)
+        return
+      }
+
+      const { data: emp, error: empError } = await supabase
         .from('employes')
         .select('entreprise_id')
-        .eq('email', session.user.email)
-        .single()
+        .eq('user_id', user.id)
+        .maybeSingle()
 
-      if (emp?.entreprise_id) setEntrepriseId(emp.entreprise_id)
+      if (empError) {
+        console.error('Erreur récupération entreprise_id:', empError)
+        setEntrepriseId(null)
+        setLoading(false)
+        return
+      }
+
+      setEntrepriseId(emp?.entreprise_id || null)
+    } catch (err) {
+      console.error('Erreur EntrepriseContext:', err)
+      setEntrepriseId(null)
+    } finally {
       setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchEntreprise()
 
-    // Met à jour si la session change (login/logout)
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
       fetchEntreprise()
     })
 
-    return () => listener.subscription.unsubscribe()
+    return () => {
+      subscription?.unsubscribe()
+    }
   }, [])
 
   return (
